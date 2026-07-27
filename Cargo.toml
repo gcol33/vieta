@@ -1,0 +1,15 @@
+[package]
+name = "vieta"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+description = "A strict, expression-oriented functional-rewrite language for computer algebra."
+repository = "https://github.com/gcol33/Vieta"
+homepage = "https://github.com/gcol33/Vieta"
+license = "MIT"
+readme = "README.md"
+keywords = ["computer-algebra", "symbolic", "rewriting", "cas", "language"]
+categories = ["mathematics", "compilers"]
+include = ["src/**/*", "README.md", "LICENSE", "docs/**/*"]
+
+[dependencies]
