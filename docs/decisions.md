@@ -681,14 +681,25 @@ stages, or runs in a worker process that can be terminated.
 unsafe in any host. This is architecture, and the same three options apply
 regardless of D1.
 
+**Observation is a fourth channel, and it is inert.** D33 leaves the machine as
+the only thing that can report what a program is doing, so the dispatch check that
+serves these three also carries the debugger and profiler hook. Sharing one runtime
+poll does not merge them: fuel is a budget, cancellation is a request, progress is
+a report, and observation must not become any of the three. Enabling it changes no
+evaluation result, no world visibility, no rule ordering, no cancellation
+behaviour, and no resource accounting beyond documented observer overhead. An
+expression evaluated at a breakpoint runs against a derived debug world or a
+read-only frame context, never against the captured world under inspection. §13.6.
+
 **Alternatives rejected.** Top-level signal handling only. Timeouts wrapping whole
 computations.
 
 **Reversal cost.** Cannot be threaded in afterwards; it touches every recursive
 evaluation path and every native binding.
 
-**Status: Decided (context carries them), Open (in-process cooperative hooks versus
-worker-process isolation, before M2).**
+**Status: Decided (context carries them; observation is a fourth channel and is
+inert), Open (in-process cooperative hooks versus worker-process isolation, before
+M2).**
 
 ---
 
@@ -827,6 +838,15 @@ What does structural equality mean between a value and a term? Same class of
 question as D2, and it deserves the same treatment: answered before values exist,
 because afterwards every answer is a migration.
 
+**Inspection is not reification.** A debugger displays runtime values (§13.6), and
+a closure, an iterator, a native FLINT polynomial handle, a compiled function, and
+an `ExprId` do not share one printer. Pushing each into a Term so that a display
+exists is the collapse this entry prevents. The contract therefore covers two
+operations: `describe`, total structural inspection defined on every value kind,
+and `reify`, the mathematically meaningful conversion a value may refuse. Neither
+is one of D27's five, since both inspect the machine rather than answering a
+mathematical question.
+
 **Second consequence, which is why the trichotomy is load-bearing.** Racket-style
 hygiene needs syntax objects carrying lexical scope information that accumulates
 during expansion. Interning those in the term store would force a choice between
@@ -841,8 +861,8 @@ which is the shortcut that forecloses hygienic macros.
 **Reversal cost.** Introducing the distinction after macros exist is a rewrite of
 the front end. Introducing it after values exist is a migration of every value kind.
 
-**Status: Decided (the trichotomy), Open (the reification contract, before slice 1
-ships).**
+**Status: Decided (the trichotomy), Open (the reification contract, including the
+split between `describe` and `reify`, before slice 1 ships).**
 
 ---
 
@@ -1097,14 +1117,26 @@ interpreter, and the second cost is invisible while it accrues.
 
 **What removing the interpreter transfers to the machine.** With no second
 evaluator, the machine is the only thing that can report what a program is doing,
-so a debugger and a profiler have no other host. Two parts of that are instruction
-set questions rather than tooling questions, and both are cheap now: whether an
-instruction offset maps to a source span, since D37's spans stop at `Syntax` and a
-side table is a compiler pass; and whether the dispatch loop exposes an observation
-point, since it already checks D22's fuel and cancellation token there. §13.6.
+so a debugger and a profiler have no other host, and observability is part of the
+machine's contract instead of something tooling reconstructs from outside. Four
+requirements land on the instruction set and the calling convention, none of them
+on a tool built later. §13.6.
 
-**Status: Decided (no interpreter, bytecode in slice 1), Open (instruction set and
-calling convention, before the compiler; spans and observation hook with it).**
+- An optional artifact side table from instruction range to origin, kept out of the
+  instruction encoding so stripped artifacts stay valid. Origin is a chain through
+  macro expansion and elaboration, not only D37's source span.
+- A stable logical frame model, since tail calls, inlining, native matcher calls,
+  and a later JIT each detach the physical stack from the program as written.
+- An observation point on the dispatch poll that changes no evaluation result, no
+  world visibility, no rule ordering, no cancellation behaviour, and no resource
+  accounting beyond documented observer overhead (D22).
+- D26's split between inspecting a value and reifying it, since a debugger
+  displaying a closure or a native handle must not force it through `Term`.
+
+**Status: Decided (no interpreter, bytecode in slice 1; observability is the
+machine's contract), Open (instruction set and calling convention, before the
+compiler; the origin map, the logical frame model, and the observation boundary
+with it).**
 
 ---
 
@@ -1473,6 +1505,15 @@ check directly, instead of a property to be hoped for.
   hygiene, derivations, and pointing a user at the source expression that produced
   a term all need it, and none of them can recover it afterwards.
 
+**Origin does not stop at `Syntax`.** D33 carries the same requirement through
+elaboration and into the compiled artifact, whose origins live in an optional side
+table from instruction range to origin. Two consequences for the representation
+chosen here. An origin is a chain rather than a single span, since macro-generated
+code has a definition site and an invocation site and a user needs both. And a
+transformation composes origins rather than copying one, so elaborating infix
+syntax into a call keeps the whole source expression rather than the operator
+token. §13.6.
+
 **What this does not gate.** D6. The parser recognizes binding *forms* without
 deciding the alpha-invariant encoding, emitting named surface forms such as
 `Lambda(name, body)` and `Let(name, value, body)`. Elaboration converts them
@@ -1494,8 +1535,9 @@ and the macro expander exist means re-auditing every consumer of Syntax and
 re-deriving trivia from source for anything that needs it. The formatter and
 hygienic macros are the two features that stop being reachable.
 
-**Status: Decided (two layers, the pipeline, and the byte-exact round trip),
-Open (whether Syntax owns nodes or is a view, and the concrete surface grammar).**
+**Status: Decided (two layers, the pipeline, the byte-exact round trip, and origin
+as a composable chain that outlives Syntax), Open (whether Syntax owns nodes or is
+a view, the concrete origin representation, and the concrete surface grammar).**
 
 ---
 
@@ -1508,12 +1550,13 @@ Open (whether Syntax owns nodes or is a view, and the concrete surface grammar).
 | Whether assumption contexts accept quantified propositions | With the enumeration | D6, §2.5, §13.1 |
 | Tag-bit layout in the id space | Slice 1 | D7, measured in the store itself, §1.9 |
 | Bytecode instruction set and calling convention | Before the compiler | D33 |
-| Whether the machine carries source spans and an observation hook | With the instruction set | D33, D22, D37, §13.6 |
+| Origin representation as a chain, and the artifact origin map | With the instruction set | D33, D37, §13.6 |
+| Logical frame model, and the inert observation boundary | With the instruction set | D33, D22, §13.6 |
 | Resource limit at construction, or none | Before the store holds anything | D10, D22, `layer-a.md` §14 |
 | Machine value representation, all of it | After the machine can be profiled | D34 |
 | Match-tree representation and matcher handoff | With the compiler | D35 |
 | Matching semantics contract content | Rule count in the low hundreds | D14 |
-| Reification contract (totality, injectivity, value/term equality) | Slice 1 ships | D26 |
+| Reification contract (totality, injectivity, value/term equality, `describe` versus `reify`) | Slice 1 ships | D26, §13.6 |
 | Surface grammar | Slice 1 | D37; explicit `*` in core, implicit multiplication confined to a marked math-input mode |
 | Whether Syntax owns nodes or is a typed view over the CST | With the parser | D37 |
 | Strategy combinator vocabulary | Rule corpus past a few dozen | D28 |

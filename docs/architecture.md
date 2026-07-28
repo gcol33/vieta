@@ -1974,20 +1974,73 @@ D33 makes this a slice-1 question. It removes the tree-walking evaluator,
 including as a debugging path, and its reason holds: two implementations diverge,
 and every semantic question then asks which one is authoritative. The consequence
 is that the machine is the only thing that ever runs a program, so the machine is
-the only thing that can be asked what a program is doing.
+the only thing that can be asked what a program is doing. Observability stops
+being something tooling reconstructs from outside and becomes part of the
+machine's contract.
 
-Two parts of that belong to the instruction set, not to a tool built later.
+Four things follow, and all four are cheap while the instruction set is open.
 
-- **Whether an instruction offset maps to a source span.** D37 carries spans
-  through the CST into `Syntax`, and nothing carries them past compilation. A side
-  table from offset to span costs a table and a compiler pass. Introduced after the
-  encoding is fixed, it postdates every artifact already stored without it, and a
-  runtime error in library code can name a function and not a line.
-- **Whether the dispatch loop has an observation point.** §10's slice-1 list
-  already checks fuel and abort in dispatch, and D22 already carries a progress
-  channel, so a hook rides a branch that exists. D22's own reversal note applies
-  unchanged: this cannot be threaded in afterwards, because it touches every
-  evaluation path.
+**Origin is metadata, and it is a chain.** Nothing enters the instruction
+encoding. A compiled artifact carries an optional side table from instruction
+range to origin, so the bytecode stays compact, a stripped artifact is less
+observable and no less valid, and the table costs a compiler pass. What the table
+holds is an origin and not only a source span. Macro expansion (D29), elaboration,
+generated rules, and self-hosted library code produce instructions whose honest
+answer is a chain: this instruction came from that generated node, which came from
+that macro invocation, which came from that written expression. One span cannot
+explain generated code, and the chain cannot be recovered from a span afterwards.
+D37 already gives every `Syntax` node an origin. The extension is that origin
+survives the rest of the pipeline.
 
-Neither asks for a tool now. Both ask the instruction set to leave room, and the
-instruction set is the next thing D33 schedules.
+```
+CST          spans over every byte
+Syntax       origin per node (D37)
+elaborated   origins composed, and any form the compiler adds between them
+bytecode     optional side table, instruction range to origin
+```
+
+Composition is the operation at each arrow. Elaborating infix syntax into a call
+keeps the whole source expression rather than the operator token, and macro output
+keeps both its definition site and its invocation site.
+
+**The machine owes a logical frame model.** An offset with an origin answers where
+execution is. A debugger also asks which function is running, which call led here,
+what the lexical bindings are, which world and rule set were captured (D20, D13),
+which symbolic match produced these bindings (D14, D35), and which native
+operation is active. Tail calls, inlining, native matcher calls, and a later JIT
+(D20) each make the physical stack stop matching the program the user wrote. The
+requirement is a stable logical frame model that debug metadata can reconstruct
+from optimized execution, settled with the calling convention, since a calling
+convention that discards the information leaves nothing to rebuild it from.
+
+**Observation is semantically inert.** Enabling a debugger or a profiler changes
+evaluation results, world visibility, rule ordering, and cancellation semantics by
+exactly nothing, and changes resource accounting only by documented observer
+overhead. D22's three channels share the dispatch poll and stay distinct as
+semantics: fuel is a budget, cancellation is a request, progress is a report.
+Observation is a fourth and must not become any of the other three. The sharp case
+is evaluating an expression at a breakpoint, since evaluating into the captured
+world mutates the state under inspection. That evaluation runs against an
+explicitly derived debug world or a read-only frame context, which D20's immutable
+versioned worlds already make expressible. The hook itself rides a branch that
+exists, since §10's slice-1 list already checks fuel and abort in dispatch, and
+D22's reversal note applies to it unchanged: it touches every evaluation path, so
+it cannot be threaded in afterwards.
+
+**Inspecting a value is not reifying it.** A debugger displays values, so it
+reaches D26's open contract immediately. A closure, an iterator, a native FLINT
+polynomial handle, a compiled function, and an `ExprId` do not share one
+accidental printer, and pushing each into a `Term` so that a display exists is the
+collapse D26 exists to prevent. The contract names two operations: `describe`,
+total structural inspection defined on every value kind, and `reify`, the
+mathematically meaningful `Value` to `Term` conversion a value may refuse. Neither
+is one of D27's five, since both inspect the machine.
+
+None of this asks for a debugger or a profiler now. It asks that origin propagate
+past `Syntax`, that the artifact format leave room for an origin map, that the
+calling convention preserve a logical frame, and that the dispatch poll carry an
+inert observation point. As one commitment: every executable operation is
+relatable to a logical origin and a logical frame, and the machine offers an
+observation boundary that changes no result. All four are cheap before the
+instruction set is fixed and expensive after it, and the instruction set is the
+next thing D33 schedules.
