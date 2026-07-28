@@ -131,7 +131,11 @@ construction is a `u32` comparison.
 - Inverses. `f(a, inv(a)) = e` is the cancellation §2 rules out.
 - User equations. `sin(x)^2 + cos(x)^2 == 1` is an equational theory for the
   simplifier and for D13's rule sets. The vocabulary is closed (D36), and that
-  is what keeps §9 and §10 finite arguments rather than open-ended ones.
+  is what keeps §9 and §10 finite arguments rather than open-ended ones. The
+  deeper reason it cannot be opened is in §0.7 of `architecture.md`: the laws
+  admitted here are the ones with a known cheap canonical form, and the word
+  problem for a general finitely presented algebra is undecidable, so no
+  constructor can accept an arbitrary presentation and return representatives.
 
 ---
 
