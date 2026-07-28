@@ -220,7 +220,7 @@ several mature ones, and every decision in the register lands in one of them.
 | Model theory | interpretation in a structure, and what is true where | D15, D16, D2 |
 | Conditional equational logic | `Γ ⊢ t = u`, obligations carried rather than assumed | D3, D5 |
 | Partial and three-valued logic | undefinedness against uncertainty against inability | D4 |
-| Programming-language semantics | binding, evaluation, worlds, compilation, values | D6, D20, D25, D33, D34 |
+| Programming-language semantics | binding, evaluation, worlds, compilation, values | D6, D20, D25, D33, D34, D38 |
 
 **The spine.** Source becomes a lossless concrete tree, which becomes surface
 Syntax, which elaborates into an element of a quotient algebra, which a domain
@@ -1402,6 +1402,7 @@ Full register with alternatives and reversal costs in `decisions.md`.
 | 35 | Term construction and destructuring compile (§0.6) |
 | 36 | A term is an element of a quotient algebra, and the theory is carried by its operators |
 | 37 | Concrete syntax is lossless; surface Syntax is semantically shaped |
+| 38 | Elaboration precedes the instruction set, and the first instruction set is evidence |
 
 Numbering is append-only from this revision onward. D25 is the constitutional
 statement and logically precedes D1; it is numbered last to keep existing citations
@@ -1729,22 +1730,25 @@ CAS integrates it.
 - the value kinds the machine computes with (D34), which precede the instruction
   set because every opcode signature quotes them, and which say nothing about how
   a value is represented;
-- the bytecode instruction set and calling convention (D33).
+- the bytecode instruction set and calling convention (D33), which registers from
+  evidence after the first elaboration slice has compiled and run rather than
+  ahead of it (D38).
 
 The block grew when the language design settled, and this is the right place for
 it to grow. It is the smallest set of documents with the largest blast radius, and
 it is what you will want in hand when you are debugging a non-confluence in year
 three. Not every entry gates the first line of code: the Layer A specification
 gated the store and is written, the binder enumeration gates the store's
-traversal API, the value kinds gate the instruction set which gates the compiler,
-and the matcher contract has until the rule count reaches the low hundreds.
+traversal API, the value kinds gate the instruction set, which D38 places after the
+first elaboration slice rather than before the compiler, and the matcher contract
+has until the rule count reaches the low hundreds.
 
 **The spine, in order, each piece shipping rather than prototyping.**
 
 ```
-store  ->  Syntax and parser  ->  compiler  ->  bytecode machine
-                                                     |
-                                        canonical printer, round-trip test
+store  ->  Syntax and parser  ->  elaboration  ->  compiler  ->  bytecode machine
+                                                                        |
+                                                    canonical printer, round-trip test
 ```
 
 The store comes first because everything else holds ids into it, and because the
@@ -1754,8 +1758,18 @@ measurements (§1.9) and its tag layout is settled from them before anything els
 holds an id.
 
 The parser produces Syntax and never terms (D26); a parser emitting terms directly
-is the shortcut that forecloses hygienic macros. The compiler targets Syntax, so
-surface-syntax churn reaches the parser and stops there.
+is the shortcut that forecloses hygienic macros. Elaboration sits between the
+parser and the compiler and resolves names, binding, quotation, and world capture,
+so the compiler targets a resolved form and surface-syntax churn reaches the parser
+and stops there.
+
+The instruction set is read off that resolved form rather than off the grammar,
+which is D38, and the consequence for this sequence is that the first bytecode is
+deliberately disposable. It exists to be compiled against, run, and observed, and
+the durable instruction-set contract registers from what representative programs
+show. What does not wait for that evidence is the machine's irreversible
+properties: origin, logical frames, the inert observation boundary (§13.6), fuel
+and cancellation (D22), and versioned worlds (D20).
 
 Below Syntax sits a lossless concrete tree (D37), so the pipeline is `source ->
 tokens -> CST -> Syntax -> elaboration -> Term`. The first milestone is the

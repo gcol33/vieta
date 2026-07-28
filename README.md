@@ -19,8 +19,10 @@ with them through condition-preserving transformations. The organising thesis:
 
 ## Status
 
-Early implementation. The kernel spine is store, parser, compiler, bytecode
-machine, printer, in that order.
+Early implementation. The kernel spine is store, parser, elaboration, compiler,
+bytecode machine, printer, in that order. The instruction set is derived from what
+elaboration resolves, so the first bytecode is provisional and the durable contract
+registers from programs that ran on it.
 
 `crates/vieta-store` is a hash-consed term store with a tagged 32-bit id space,
 normalizing at construction, so `x + 2` and `2 + x` are one id and structural
@@ -38,7 +40,7 @@ binding forms, and where each node came from.
   self-hosting thesis and how it stays falsifiable, the FLINT-`gr` abstraction
   boundary, the milestone sequence, and a map of the surface that remains.
 - [`docs/decisions.md`](docs/decisions.md) — irreversible-decision register,
-  D1 through D37: each entry records the decision, the alternatives considered,
+  D1 through D38: each entry records the decision, the alternatives considered,
   why reversal is expensive, and current status. Read D25 first.
 - [`docs/layer-a.md`](docs/layer-a.md) — the construction-time normalization
   specification: the canonical signature vocabulary, the canonical order, the

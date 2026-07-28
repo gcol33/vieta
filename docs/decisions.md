@@ -228,6 +228,12 @@ the second and environment lookup in the first. The encoding chosen here governs
 the store only, and the enumeration should say so, because the closure is what a
 user writes.
 
+**Where the encoding gets decided.** D38 gives it a setting. The first elaboration
+slice carries literals, names, calls, `let`, `lambda`, and quotation, which is the
+smallest arrangement in which a lexical binder has to be represented for real. The
+enumeration above stays the gate on the store's traversal API, and the encoding
+gets chosen against code that runs rather than against the list.
+
 **Alternatives rejected.** Named bound variables with capture-avoiding renaming at
 substitution time. Committing to a specific encoding before the enumeration.
 
@@ -235,7 +241,8 @@ substitution time. Committing to a specific encoding before the enumeration.
 goes under a binder, plus free alpha-equivalence under hash-consing. The
 *encoding* is behind an API and is not.
 
-**Status: Decided (semantics), Open (encoding, before slice 1 ships).**
+**Status: Decided (semantics), Open (encoding, with the first elaboration slice,
+D38).**
 
 ---
 
@@ -1134,9 +1141,9 @@ on a tool built later. §13.6.
   displaying a closure or a native handle must not force it through `Term`.
 
 **Status: Decided (no interpreter, bytecode in slice 1; observability is the
-machine's contract), Open (instruction set and calling convention, before the
-compiler; the origin map, the logical frame model, and the observation boundary
-with it).**
+machine's contract), Open (instruction set and calling convention, derived from the
+first elaboration slice per D38, with the origin map, the logical frame model, and
+the observation boundary settled alongside it).**
 
 ---
 
@@ -1541,15 +1548,101 @@ a view, the concrete origin representation, and the concrete surface grammar).**
 
 ---
 
+## D38. Elaboration precedes the instruction set, and the first instruction set is evidence
+
+**Decision.** The bytecode instruction vocabulary is derived from the resolved
+executable form, not from surface syntax. The dependency runs one way.
+
+```
+surface Syntax
+  -> name resolution, binding, quotation, world capture
+  -> resolved executable form
+  -> instruction set
+```
+
+The first instruction set to exist is provisional and expected to be discarded. It
+is compiled, run, and read as evidence. The durable contract registers after
+several representative programs compile cleanly through it.
+
+**Why the order is not a preference.** An instruction set designed against the
+surface grammar becomes a serialized AST: one opcode per surface form, with the
+resolution work still to be done at run time. D33 already commits the artifact
+format and the origin map (§13.6) to outliving individual programs, so the encoding
+is the part of the machine that least tolerates a guess.
+
+**What elaboration settles that the machine needs.** Each of these changes the
+opcode list, and none is answerable from the grammar.
+
+- Whether a call is lexical, world-bound (D20), or dynamic, since that is three
+  instructions or one instruction with a resolution step at run time.
+- How a closure captures its environment (D34).
+- How binders are represented (D6), which is the question the store also asks and
+  is not required to receive the same answer.
+- Whether symbolic construction is a machine primitive or an ordinary call, which
+  is D35 asked at the opcode level.
+- How guarded results (D3) and matching (D14, D35) enter control flow.
+- Where origin attaches once desugaring has moved code (§13.6).
+- Which surface constructs disappear before execution and need no instruction at
+  all.
+
+**The first elaboration slice.** Literals, names and symbol resolution, calls,
+`let`, `lambda`, quotation and term construction, and origin propagation. Nothing
+else. It is sized to expose the machine model rather than to cover the language,
+and it forces D6's encoding in a concrete setting instead of an abstract one.
+
+**No Core IR is registered.** The resolved form lives behind `vieta-syntax` or in a
+`vieta-elab` crate, and whether it becomes an official Core IR stays open until it
+has compiled something. Registering an intermediate representation before anything
+runs through it is the same mistake as freezing the instruction set early, one
+level down.
+
+**The sequence.**
+
+```
+1. Resolve D6 far enough for lexical binding
+2. Implement the first elaboration slice
+3. Compile it into a small provisional bytecode
+4. Run representative programs and observe
+5. Register the durable instruction-set contract from what they show
+```
+
+Representative means at least a `let` with an arithmetic body, a named function, a
+quotation, and a match on a variadic head.
+
+**What this does not relax.** The irreversible machine properties are fixed already
+and do not wait for evidence: origin propagation and the artifact origin map, the
+logical frame model, the inert observation boundary (§13.6), fuel and cancellation
+(D22), and compilation against versioned worlds (D20). A provisional encoding is
+free to change. A provisional encoding that omits those is not provisional, it is a
+restart.
+
+**Alternatives rejected.** Designing the instruction set from the surface grammar,
+which produces a serialized AST and moves resolution into the run-time path.
+Registering a full Core IR now. Keeping the first encoding because it works, which
+makes "provisional" a label rather than a plan.
+
+**Reversal cost.** Asymmetric, which is why the order is registered rather than
+left to taste. Deriving the instruction set from elaboration costs one throwaway
+encoding and the time to write it. Freezing it first costs every artifact stored
+under it plus the origin map format D33 commits to outliving programs, and that
+cost stays invisible until the first non-trivial program is compiled.
+
+**Status: Decided (the order, and that the first encoding is disposable), Open (the
+resolved form's shape, and whether it becomes the Core IR).**
+
+---
+
 ## Open items
 
 | Item | Needed before | Reference |
 |---|---|---|
-| Binder encoding (indices, levels, locally nameless) | Slice 1 ships | D6 |
+| Binder encoding (indices, levels, locally nameless) | With the first elaboration slice | D6, D38 |
 | Enumeration of what binds | Before choosing the encoding | D6 |
 | Whether assumption contexts accept quantified propositions | With the enumeration | D6, §2.5, §13.1 |
 | Tag-bit layout in the id space | Slice 1 | D7, measured in the store itself, §1.9 |
-| Bytecode instruction set and calling convention | Before the compiler | D33 |
+| Shape of the resolved executable form | With the first elaboration slice | D38 |
+| Whether the resolved form becomes an official Core IR | After the provisional bytecode runs | D38 |
+| Durable bytecode instruction set and calling convention | After representative programs run on the provisional one | D33, D38 |
 | Origin representation as a chain, and the artifact origin map | With the instruction set | D33, D37, §13.6 |
 | Logical frame model, and the inert observation boundary | With the instruction set | D33, D22, §13.6 |
 | Resource limit at construction, or none | Before the store holds anything | D10, D22, `layer-a.md` §14 |
