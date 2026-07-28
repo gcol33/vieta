@@ -12,7 +12,10 @@ Mathematical domains, assumptions, rule sets, and sessions are values. Effects
 and dynamic lookup are explicit. Vieta code compiles against immutable versioned
 worlds.
 
-The organising thesis: **lowering emits obligations; lifting preserves them.**
+Underneath, Vieta treats symbolic expressions as elements of free algebras modulo
+explicit theories, interprets them in runtime mathematical models, and computes
+with them through condition-preserving transformations. The organising thesis:
+**lowering emits obligations; lifting preserves them.**
 
 ## Status
 

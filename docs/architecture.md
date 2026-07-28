@@ -12,9 +12,9 @@ more than the conclusion.
 
 ## 0. Verdict in one page
 
-§0.5 and §0.6 state what Vieta *is*, and are prior to everything here. Given
-that, five decisions determine whether Vieta reaches its endpoint. Everything
-else is recoverable engineering.
+§0.5 and §0.6 state what Vieta *is*, §0.7 states which mathematics it rests on,
+and all three are prior to everything here. Given that, five decisions determine
+whether Vieta reaches its endpoint. Everything else is recoverable engineering.
 
 **D2. Vieta distinguishes four meanings of equality before simplification rule
 one.** Structural, domain, provable, extensional. `(a^2-1)/(a-1)` and `a+1` are
@@ -197,6 +197,84 @@ verification. Stratego covers the transformation half and transforms programs.
 Rascal treats source as data for analysis and transformation. What none of them
 holds is a mathematical universe with assumptions, partial equality, and exact
 arithmetic sitting on a compiled symbolic core.
+
+---
+
+## 0.7 The mathematical foundation
+
+Vieta treats symbolic expressions as elements of free algebras modulo explicit
+theories, interprets them in runtime mathematical models, and computes with them
+through condition-preserving transformations inside a compiled language.
+
+The foundation is not a new branch of mathematics. It is the meeting point of
+several mature ones, and every decision in the register lands in one of them.
+
+| Field | What it supplies | Where it lands |
+|---|---|---|
+| Concrete syntax theory | source, trivia, spans, error recovery | D37 |
+| Universal algebra | signatures, arities, free term algebras | D36 |
+| Equational logic | congruences, quotient algebras, canonical representatives | D36, D10, `layer-a.md` |
+| Term rewriting | termination, confluence, normal forms, matching modulo AC | D10, D14, D13 |
+| Model theory | interpretation in a structure, and what is true where | D15, D16, D2 |
+| Conditional equational logic | `Γ ⊢ t = u`, obligations carried rather than assumed | D3, D5 |
+| Partial and three-valued logic | undefinedness against uncertainty against inability | D4 |
+| Programming-language semantics | binding, evaluation, worlds, compilation, values | D6, D20, D25, D33, D34 |
+
+**The spine.** Source becomes a lossless concrete tree, which becomes surface
+Syntax, which elaborates into an element of a quotient algebra, which a domain
+interprets in a model. Runtime `Value` is orthogonal to the whole chain and
+belongs to the machine (D34): an `ExprId`, a closure, a loop counter, and a FLINT
+polynomial are all values.
+
+**Five points where the correspondence needs care.**
+
+*Surface Syntax is not yet a term algebra.* A free term algebra `T(X)` exists
+only once a signature does, and the signature is chosen by the world when
+elaboration resolves names to operator identities (D20, D36). Syntax holds names,
+not operators. This is exactly why one source string can become an element of two
+different algebras: `a * b` under a commutative `Times` and under a
+non-commutative one are two terms, and nothing about the syntax decided which.
+
+*Initiality needs a valuation, and that is what evaluation is.* The universal
+property says an interpretation of the operators extends uniquely to every term.
+Uniquely, once the free generators also have values. Fixing the model supplies
+the first half and the environment supplies the second, so "evaluate this
+expression in this domain under these bindings" is the unique homomorphism out of
+the free algebra, and D15's domains and D25's environments are its two arguments.
+
+*The closed law vocabulary is a decidability boundary.* Layer A admits
+associativity, commutativity, idempotence, a unit, and a zero because those
+theories have a known, cheap canonical form. The word problem for a general
+finitely presented algebra is undecidable, which is Post and Markov for
+semigroups and Novikov and Boone for groups, so no constructor can be handed an
+arbitrary presentation and asked for canonical representatives. Presenting a
+group with inverses, or a lattice with absorption, is available as an equational
+theory for the simplifier and is not available at construction. That boundary is
+mathematical rather than a matter of effort.
+
+*Three truth values answer six questions, because the question carries the rest.*
+A proposition can be true in every model of a theory, true in one domain, true
+under assumptions, false, unproved, or undecidable by any procedure. `Truth` has
+three values (D4) because which of those is being asked is fixed by the
+predicate: D2's four equalities are four different relations, and each answers
+`True`, `False`, or `Unknown` about the relation it names. The remaining
+distinction, between a genuine `Unknown` and a failure to determine one, is
+carried by `Status` alongside the truth value, which is what D4 keeps them
+separate types for.
+
+*Category theory describes this and is not a dependency.* Free constructions,
+quotients, initial objects, and interpretation functors give the shortest
+accurate account of the architecture. None of it needs to appear in the kernel,
+and a categorical abstraction layer in the implementation would be a cost with no
+corresponding decision behind it.
+
+**What the map is for.** It says which literature answers a question before it is
+asked. A question about canonical forms is rewriting theory. A question about
+what is true in `Q(a)` and false in `Q` is model theory. A question about whether
+a rule may fire is conditional equational logic, and D3's guarded set is that
+judgement written as a return type: a branch is a `Γ` and a `t = u`, and a rule
+that reports rather than assumes is a rule that refuses to discharge `Γ` on its
+own authority.
 
 ---
 
