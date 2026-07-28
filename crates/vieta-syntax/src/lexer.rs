@@ -63,6 +63,7 @@ fn classify(first: char, text: &str, offset: u32) -> TokenKind {
             "fn" => TokenKind::KwFn,
             "let" => TokenKind::KwLet,
             "in" => TokenKind::KwIn,
+            "term" => TokenKind::KwTerm,
             _ => TokenKind::Ident,
         };
     }
@@ -84,6 +85,8 @@ fn classify(first: char, text: &str, offset: u32) -> TokenKind {
         "^" => TokenKind::Caret,
         "(" => TokenKind::LParen,
         ")" => TokenKind::RParen,
+        "{" => TokenKind::LBrace,
+        "}" => TokenKind::RBrace,
         "," => TokenKind::Comma,
         "=" => TokenKind::Equals,
         _ => TokenKind::Unknown,
@@ -160,6 +163,7 @@ mod tests {
             "f(x, y) ^ 2",
             "let a = 1 in a",
             "fn(x) => x * x",
+            "term { x + 2 }",
             "\u{feff}x",
             "@$\u{00a7}",
             "/* unclosed",
@@ -185,7 +189,9 @@ mod tests {
         assert_eq!(kinds("fn"), vec![TokenKind::KwFn]);
         assert_eq!(kinds("let"), vec![TokenKind::KwLet]);
         assert_eq!(kinds("in"), vec![TokenKind::KwIn]);
+        assert_eq!(kinds("term"), vec![TokenKind::KwTerm]);
         assert_eq!(kinds("fnord"), vec![TokenKind::Ident]);
+        assert_eq!(kinds("terminal"), vec![TokenKind::Ident]);
         assert_eq!(kinds("\u{03b1}_1"), vec![TokenKind::Ident]);
     }
 

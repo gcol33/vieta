@@ -26,6 +26,8 @@ pub enum TokenKind {
     KwLet,
     /// `in`
     KwIn,
+    /// `term`
+    KwTerm,
     /// A run of digits, with `_` allowed between them.
     Int,
     /// Digits, a `.`, and digits.
@@ -44,6 +46,10 @@ pub enum TokenKind {
     LParen,
     /// `)`
     RParen,
+    /// `{`
+    LBrace,
+    /// `}`
+    RBrace,
     /// `,`
     Comma,
     /// `=`
@@ -72,6 +78,7 @@ impl TokenKind {
             TokenKind::KwFn => "`fn`",
             TokenKind::KwLet => "`let`",
             TokenKind::KwIn => "`in`",
+            TokenKind::KwTerm => "`term`",
             TokenKind::Plus => "`+`",
             TokenKind::Minus => "`-`",
             TokenKind::Star => "`*`",
@@ -79,6 +86,8 @@ impl TokenKind {
             TokenKind::Caret => "`^`",
             TokenKind::LParen => "`(`",
             TokenKind::RParen => "`)`",
+            TokenKind::LBrace => "`{`",
+            TokenKind::RBrace => "`}`",
             TokenKind::Comma => "`,`",
             TokenKind::Equals => "`=`",
             TokenKind::FatArrow => "`=>`",

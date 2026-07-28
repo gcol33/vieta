@@ -76,6 +76,9 @@ const CORPUS: &[&str] = &[
     "let a = 1 in a + 1",
     "fn(x) => x * x",
     "let f = fn(x) => x ^ 2 in f(3)",
+    "term { x + 2 }",
+    "term{fn(x) => x + y}",
+    "term { x } + 1",
     "x // comment",
     "x /* why */ + y",
     "/* unclosed",
@@ -94,6 +97,10 @@ const CORPUS: &[&str] = &[
     "fn",
     "let a = in",
     "fn(x) x",
+    "term",
+    "term {",
+    "term x",
+    "{ x }",
     "@#$",
     "x @ y",
     "x y",
@@ -131,8 +138,9 @@ impl Rng {
 #[test]
 fn generated_token_soup_round_trips() {
     const FRAGMENTS: &[&str] = &[
-        "x", "y", "1", "1.5", "+", "-", "*", "/", "^", "(", ")", ",", "=", "=>", "fn", "let",
-        "in", " ", "\t", "\r\n", "// c\n", "/* c */", "@", "\u{03b1}", "\u{feff}", "_",
+        "x", "y", "1", "1.5", "+", "-", "*", "/", "^", "(", ")", "{", "}", ",", "=", "=>", "fn",
+        "let", "in", "term", " ", "\t", "\r\n", "// c\n", "/* c */", "@", "\u{03b1}", "\u{feff}",
+        "_",
     ];
     let mut rng = Rng(0x51ee_d001);
     for _ in 0..2_000 {
@@ -271,6 +279,23 @@ fn binding_forms_reach_surface_syntax_with_their_names() {
         }
         other => panic!("fn lowered to {other:?}"),
     }
+}
+
+// A quotation body parses like anything else, so what the form changes is
+// elaboration and not the grammar.
+#[test]
+fn quotation_reaches_surface_syntax_around_an_ordinary_body() {
+    match lower(&parse(SourceText::from("term { fn(x) => x + y }"))) {
+        Syntax::Quote { body, .. } => match *body {
+            Syntax::Lambda { parameter, .. } => assert_eq!(&*parameter, "x"),
+            other => panic!("quotation body lowered to {other:?}"),
+        },
+        other => panic!("term lowered to {other:?}"),
+    }
+
+    let spaced = lower(&parse(SourceText::from("term {  x + y  }")));
+    let tight = lower(&parse(SourceText::from("term{x+y}")));
+    assert!(spaced.same_shape(&tight));
 }
 
 #[test]

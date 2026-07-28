@@ -1,0 +1,16 @@
+[package]
+name = "vieta-elab"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+description = "Elaboration: surface syntax resolved into executable structure and symbolic terms."
+
+[lints]
+workspace = true
+
+[dependencies]
+vieta-store = { path = "../vieta-store" }
+vieta-syntax = { path = "../vieta-syntax" }

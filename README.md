@@ -33,6 +33,12 @@ reproduces its source byte for byte, malformed input included, and the surface
 syntax elaboration reads, which drops grouping and trivia and keeps names,
 binding forms, and where each node came from.
 
+`crates/vieta-elab` is the resolved layer: an occurrence resolves to the binder
+that claims it or to a name a world still owes, a closure carries the capture set
+free-variable analysis computes, a quotation builds an alpha-invariant term in the
+store, and every resolved node keeps its origin. Binding takes two paths here, one
+into code and one into the store, and the context a form sits in decides which.
+
 ## Documents
 
 - [`docs/architecture.md`](docs/architecture.md) — architectural assessment: what

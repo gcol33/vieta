@@ -31,6 +31,8 @@ pub enum NodeKind {
     Lambda,
     /// `let x = value in body`
     Let,
+    /// `term { expression }`
+    Quote,
     /// Input the parser could not place, kept so that it still prints.
     Error,
 }

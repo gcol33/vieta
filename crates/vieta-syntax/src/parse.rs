@@ -177,6 +177,7 @@ impl Parser<'_> {
             }
             Some(TokenKind::KwFn) => self.lambda(),
             Some(TokenKind::KwLet) => self.binding(),
+            Some(TokenKind::KwTerm) => self.quotation(),
             Some(TokenKind::Ident) => {
                 let checkpoint = self.builder.checkpoint();
                 self.builder.start(NodeKind::NameRef);
@@ -219,6 +220,17 @@ impl Parser<'_> {
         self.expect(TokenKind::RParen);
         self.expect(TokenKind::FatArrow);
         self.expr(0);
+        self.builder.finish();
+    }
+
+    /// `term { e }`. The body uses the same grammar as everything else, so what
+    /// a quotation changes is elaboration and not parsing.
+    fn quotation(&mut self) {
+        self.builder.start(NodeKind::Quote);
+        self.bump();
+        self.expect(TokenKind::LBrace);
+        self.expr(0);
+        self.expect(TokenKind::RBrace);
         self.builder.finish();
     }
 

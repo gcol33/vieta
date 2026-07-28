@@ -119,6 +119,13 @@ pub enum Syntax {
         /// Where it came from.
         origin: Origin,
     },
+    /// `term { expression }`
+    Quote {
+        /// The quoted expression, which elaboration reads symbolically.
+        body: Box<Syntax>,
+        /// Where it came from.
+        origin: Origin,
+    },
     /// Input that did not parse.
     Error {
         /// Where it came from.
@@ -137,6 +144,7 @@ impl Syntax {
             | Syntax::Call { origin, .. }
             | Syntax::Lambda { origin, .. }
             | Syntax::Let { origin, .. }
+            | Syntax::Quote { origin, .. }
             | Syntax::Error { origin } => *origin,
         }
     }
@@ -158,6 +166,7 @@ impl Syntax {
                 Syntax::Lambda { parameter, body, origin }
             }
             Syntax::Let { name, value, body, .. } => Syntax::Let { name, value, body, origin },
+            Syntax::Quote { body, .. } => Syntax::Quote { body, origin },
             Syntax::Error { .. } => Syntax::Error { origin },
         }
     }
@@ -192,6 +201,7 @@ impl Syntax {
                 Syntax::Let { name: a, value: av, body: ab, .. },
                 Syntax::Let { name: b, value: bv, body: bb, .. },
             ) => a == b && av.same_shape(bv) && ab.same_shape(bb),
+            (Syntax::Quote { body: a, .. }, Syntax::Quote { body: b, .. }) => a.same_shape(b),
             (Syntax::Error { .. }, Syntax::Error { .. }) => true,
             _ => false,
         }
@@ -265,6 +275,10 @@ fn lower_node(node: NodeRef<'_>) -> Syntax {
             name: bound_name(node),
             value: Box::new(child_or_error(node, 0, origin)),
             body: Box::new(child_or_error(node, 1, origin)),
+            origin,
+        },
+        NodeKind::Quote => Syntax::Quote {
+            body: Box::new(child_or_error(node, 0, origin)),
             origin,
         },
         NodeKind::Root | NodeKind::ArgList | NodeKind::Error => Syntax::Error { origin },
