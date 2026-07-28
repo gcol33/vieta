@@ -772,6 +772,10 @@ Value     evaluated runtime object: closure, compiled function, dense matrix,
           domain element, native polynomial handle
 ```
 
+Syntax itself divides once more, into a lossless concrete tree and the
+semantically shaped form elaboration reads (D37), for the same reason this entry
+gives one level up.
+
 > Everything is representable as a term. Not everything is stored as one.
 
 Specialized values reify into terms on demand rather than living as terms.
@@ -1341,6 +1345,69 @@ that actually survives.
 
 ---
 
+## D37. Concrete syntax is lossless; surface Syntax is semantically shaped
+
+**Decision.** Two representations below Term rather than one.
+
+```
+CST       every token, including trivia, comments, redundant parentheses, and
+          input that does not parse; spans into the source text
+Syntax    names, spans, and binding forms, shaped for elaboration
+```
+
+```
+source -> tokens -> CST -> Syntax -> resolution and elaboration -> Term (Layer A)
+```
+
+**Why one representation cannot serve both.** Exact source preservation and
+convenient semantic structure pull against each other at every node. A redundant
+parenthesis is semantically absent and source-significant. A comment is what a
+formatter and a diagnostic are for and is nothing to elaboration. Malformed input
+has to produce a tree for a REPL and an editor, and must never reach elaboration
+at all. Hygienic macros (D29) need lexical scope and provenance that a Term must
+never carry, which is the same argument D26 makes one level up and for the same
+reason.
+
+**What each one is for.** The CST serves the formatter, diagnostics with spans,
+error recovery, incremental reparse, and the source view a macro sees. Syntax
+serves elaboration, with binding forms visible and names still names.
+
+**The acceptance property, and it is not D12's.** Printing a CST reproduces the
+source byte for byte, and reparsing that output yields the same CST, for
+well-formed and malformed input alike. D12's `parse(canonicalPrint(t)) == t` is
+about Terms and says nothing about trivia or grouping. Both round trips exist,
+they test different layers, and the syntax one is the first milestone of
+`vieta-syntax`. The Term-level statement that follows it is
+`elaborate(parse("x + 2")) == elaborate(parse("2 + x"))`, which is where the two
+layers meet: Syntax keeps what was written and the elaborated terms enter one
+Layer A class (D36).
+
+**What this does not gate.** D6. The parser recognizes binding *forms* without
+deciding the alpha-invariant encoding, emitting named surface forms such as
+`Lambda(name, body)` and `Let(name, value, body)`. Elaboration converts them
+later. D6 gates elaboration and the store's traversal API, and it does not gate
+the parser, so `vieta-syntax` can start while the enumeration is still open.
+
+**Alternatives rejected.** One Syntax type doing both jobs, which is the shortcut
+that costs the formatter and hygiene. Reparsing from source whenever trivia is
+needed, which makes every diagnostic and every macro expansion depend on the
+source text still being available and identical.
+
+**Working assumption, not part of the decision.** Syntax owns its own nodes.
+A lossless green tree with a typed view layered over it (the Roslyn and
+rust-analyzer shape) is the same two layers with shared storage and stays
+available; it is a representation choice behind the boundary this entry fixes.
+
+**Reversal cost.** Retrofitting losslessness after the elaborator, the printer,
+and the macro expander exist means re-auditing every consumer of Syntax and
+re-deriving trivia from source for anything that needs it. The formatter and
+hygienic macros are the two features that stop being reachable.
+
+**Status: Decided (two layers, the pipeline, and the byte-exact round trip),
+Open (whether Syntax owns nodes or is a view, and the concrete surface grammar).**
+
+---
+
 ## Open items
 
 | Item | Needed before | Reference |
@@ -1354,7 +1421,8 @@ that actually survives.
 | Match-tree representation and matcher handoff | With the compiler | D35 |
 | Matching semantics contract content | Rule count in the low hundreds | D14 |
 | Reification contract (totality, injectivity, value/term equality) | Slice 1 ships | D26 |
-| Surface syntax | Slice 1 | Explicit `*` in core; implicit multiplication confined to a marked math-input mode |
+| Surface grammar | Slice 1 | D37; explicit `*` in core, implicit multiplication confined to a marked math-input mode |
+| Whether Syntax owns nodes or is a typed view over the CST | With the parser | D37 |
 | Strategy combinator vocabulary | Rule corpus past a few dozen | D28 |
 | Store GC algorithm | M1 | D8, epoch or region-based with compaction is the working assumption |
 | Conformance suite format | M1 | Implementation-independent |

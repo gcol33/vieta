@@ -371,9 +371,15 @@ Layer A fixes a canonical-representative function `s : T(X)/≡_A -> T(X)` with
 `q ∘ s = id`, which is a section of `q`, and `normalize` is the induced map
 `s ∘ q` on raw terms. It sends a term to the chosen representative of its class.
 Interning then gives that representative a word-sized name, which is where
-`ExprId` equality comes from. The section is what §5 and §6 construct; `s` is
-only a section because §5's order is total, which is the one property that
-choice depends on.
+`ExprId` equality comes from. The section is what §5 and §6 construct.
+
+Sections exist without any order at all, since a representative may be chosen
+from each class arbitrarily. What §5's total order supplies is *this* section: a
+choice rule that is deterministic, computable, and reproducible across processes,
+which is the only kind a machine can implement. It does not supply minimality.
+The canonical form is what §6's passes produce and is not the least element of
+its class, since flattening changes arity and §5 compares arity, so
+`Plus(a, Plus(b, c))` precedes the `Plus(a, b, c)` it normalizes to.
 
 **Left to right (soundness).** Every pass replaces a term by an `≡_A`-equal one:
 steps 1 through 6 are the declared equations read left to right, step 7 is

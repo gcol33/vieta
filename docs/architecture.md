@@ -1256,6 +1256,7 @@ Full register with alternatives and reversal costs in `decisions.md`.
 | 34 | A term is one kind of runtime value (§0.6) |
 | 35 | Term construction and destructuring compile (§0.6) |
 | 36 | A term is an element of a quotient algebra, and the theory is carried by its operators |
+| 37 | Concrete syntax is lossless; surface Syntax is semantically shaped |
 
 Numbering is append-only from this revision onward. D25 is the constitutional
 statement and logically precedes D1; it is numbered last to keep existing citations
@@ -1610,6 +1611,13 @@ holds an id.
 The parser produces Syntax and never terms (D26); a parser emitting terms directly
 is the shortcut that forecloses hygienic macros. The compiler targets Syntax, so
 surface-syntax churn reaches the parser and stops there.
+
+Below Syntax sits a lossless concrete tree (D37), so the pipeline is `source ->
+tokens -> CST -> Syntax -> elaboration -> Term`. The first milestone is the
+byte-exact syntax round trip rather than any term at all, because the formatter,
+the diagnostics, the error recovery a REPL needs, and the source view hygienic
+macros consume all read the CST, and none of them can be recovered once trivia
+has been dropped.
 
 The first demonstrable result is a Vieta expression that parses, compiles, runs on
 the machine, and prints. Layer A lands next, and with it `x + 2` and `2 + x`

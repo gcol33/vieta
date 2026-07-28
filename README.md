@@ -28,7 +28,7 @@ is a word comparison and equal subterms are stored once.
   self-hosting thesis and how it stays falsifiable, the FLINT-`gr` abstraction
   boundary, and the milestone sequence.
 - [`docs/decisions.md`](docs/decisions.md) — irreversible-decision register,
-  D1 through D36: each entry records the decision, the alternatives considered,
+  D1 through D37: each entry records the decision, the alternatives considered,
   why reversal is expensive, and current status. Read D25 first.
 - [`docs/layer-a.md`](docs/layer-a.md) — the construction-time normalization
   specification: the canonical signature vocabulary, the canonical order, the
