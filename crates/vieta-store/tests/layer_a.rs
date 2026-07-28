@@ -208,6 +208,32 @@ fn a_declared_operator_gets_the_same_treatment_as_a_kernel_one() {
     );
 }
 
+// Mathematica lets `SetAttributes[star, Orderless]` land mid-session, so one
+// session can hold a held `star[b, a]` and a fresh `star[a, b]` under a single
+// head, standing for an element of a free algebra and an element of its
+// commutative quotient at once. Two operators is the answer, and the same
+// printed name in two modules is how one symbol serves two algebras.
+#[test]
+fn two_algebras_over_one_name_are_two_operators() {
+    let store = Store::new();
+    let commutative = CanonicalSignature { commutative: true, ..CanonicalSignature::EMPTY };
+    let free = store
+        .declare(ModuleId(1), "star", CanonicalSignature::EMPTY)
+        .expect("open");
+    let quotient = store.declare(ModuleId(2), "star", commutative).expect("open");
+    let a = store.symbol("a");
+    let b = store.symbol("b");
+
+    assert_ne!(free, quotient, "one name, two operator identities");
+    assert_ne!(app(&store, free, &[a, b]), app(&store, free, &[b, a]));
+    assert_eq!(app(&store, quotient, &[a, b]), app(&store, quotient, &[b, a]));
+
+    assert!(
+        store.declare(ModuleId(1), "star", commutative).is_err(),
+        "changing an operator in place is the operation that is refused"
+    );
+}
+
 #[test]
 fn associativity_without_commutativity_flattens_and_keeps_order() {
     let store = Store::new();

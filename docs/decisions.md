@@ -1248,6 +1248,23 @@ to declare a different operator, or to bind the printed name to a new one in a n
 scope. It is the same restriction as being unable to add two fields to a struct
 and go on calling it the same type.
 
+**The case this rules out, concretely.** Mathematica lets `SetAttributes[star,
+Orderless]` land mid-session, and `ClearAttributes` take it away again. Before it,
+`star[b, a]` stays as written; after it, the same input sorts to `star[a, b]`. An
+expression evaluated earlier and kept under `HoldComplete` keeps the old
+structure, so one session holds `star[b, a]` and `star[a, b]` under one head,
+standing for an element of a free algebra and an element of its commutative
+quotient at the same time. The head did not acquire a property. It changed which
+algebra it belongs to, and the terms already built were not consulted.
+
+Vieta answers with two operators. A `star` with no laws and a `star` declared
+commutative are different identities, and elaboration decides which one a printed
+symbol resolves to in a given module or domain, so `FreeAssociativeAlgebra(Q, [a,
+b])` and `PolynomialRing(Q, [a, b])` can both spell their product `*` without
+sharing a quotient. The restriction costs the user the ability to change an
+operator in place. It buys the requirement to say which algebra the work is
+happening in, which is the thing that actually changed.
+
 **Implementation.** Intern the operator on `(module path, name)` and store its
 canonical signature in the entry. Redeclaring an identical signature is the same
 operator, which makes module reload idempotent. Redeclaring a different signature
@@ -1381,6 +1398,37 @@ they test different layers, and the syntax one is the first milestone of
 `elaborate(parse("x + 2")) == elaborate(parse("2 + x"))`, which is where the two
 layers meet: Syntax keeps what was written and the elaborated terms enter one
 Layer A class (D36).
+
+**What byte-exact covers.** Vieta source is valid UTF-8, checked once before
+lexing. Invalid UTF-8 is rejected with the offset of the first bad sequence
+rather than carried as raw error bytes, so every span is a character boundary and
+a mis-encoded file produces one diagnostic instead of a cascade of them.
+Losslessness is about malformed *syntax*, and over accepted input it preserves
+the byte-order mark, CRLF against LF, tabs, comments, every run of whitespace,
+the spelling of numbers, the spelling of identifiers with no normalization
+applied, and redundant parentheses.
+
+**The invariant that makes it cheap.** Trivia are leaves of the tree rather than
+attachments to neighbouring tokens, so printing is the concatenation of every
+leaf's source text in order, and the spans of the non-synthetic leaves tile the
+source exactly. The round trip is then a corollary of an invariant a test can
+check directly, instead of a property to be hoped for.
+
+**Three constraints that follow.**
+
+- *No permanent trivia attachment.* `x + /* why */ y` has the leaf sequence
+  identifier, whitespace, plus, whitespace, comment, whitespace, identifier. An
+  API may present trivia as leading or trailing, and that presentation is a view.
+  Baking an attachment rule into the representation makes it wrong the first time
+  a formatter or an edit disagrees with the rule.
+- *Recovery never fabricates printable bytes.* A missing token is a synthetic
+  leaf with an empty span, so `f(x` prints back as `f(x` and not as `f(x)`. The
+  lexer is total: every step consumes at least one character or reaches the end,
+  and an unrecognized character becomes an error token rather than a trap.
+- *Provenance crosses into Syntax.* Every Syntax node carries an origin: a source
+  span, a recovery synthesis, or a macro expansion once D29 exists. Diagnostics,
+  hygiene, derivations, and pointing a user at the source expression that produced
+  a term all need it, and none of them can recover it afterwards.
 
 **What this does not gate.** D6. The parser recognizes binding *forms* without
 deciding the alpha-invariant encoding, emitting named surface forms such as

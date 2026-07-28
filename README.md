@@ -17,9 +17,16 @@ The organising thesis: **lowering emits obligations; lifting preserves them.**
 ## Status
 
 Early implementation. The kernel spine is store, parser, compiler, bytecode
-machine, printer, in that order. `crates/vieta-store` carries the first of them:
-a hash-consed term store with a tagged 32-bit id space, where structural equality
-is a word comparison and equal subterms are stored once.
+machine, printer, in that order.
+
+`crates/vieta-store` is a hash-consed term store with a tagged 32-bit id space,
+normalizing at construction, so `x + 2` and `2 + x` are one id and structural
+equality is a word comparison.
+
+`crates/vieta-syntax` is the syntax layer: a lossless concrete tree that
+reproduces its source byte for byte, malformed input included, and the surface
+syntax elaboration reads, which drops grouping and trivia and keeps names,
+binding forms, and where each node came from.
 
 ## Documents
 
