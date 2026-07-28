@@ -1,12 +1,11 @@
-# Vieta: Irreversible Decision Register
+﻿# Vieta: Irreversible Decision Register
 
-Revised 2026-07-27. Renumbered once in this revision to follow the order of
-`architecture.md`; references to earlier numbering do not carry over.
+Revised 2026-07-28. Renumbered once, to follow the order of `architecture.md`;
+references to earlier numbering do not carry over.
 
-**Numbering is append-only from here.** D25 through D32 record the language
-constitution and logically precede D1. They are numbered last so that existing
-citations stay valid, which is worth more than a tidy reading order. Read D25
-first.
+**Numbering is append-only.** D25 through D32 record the language constitution and
+logically precede D1. They are numbered last so that existing citations stay
+valid, which is worth more than a tidy reading order. Read D25 first.
 
 Decisions that cannot be changed cheaply once mathematical algorithms are written
 against them. Each entry records the decision, the alternatives considered, why
@@ -60,9 +59,12 @@ this is a throughput cost proportional to call volume.
 **Falsifiable premise.** The argument rests on the self-hosting fraction being
 high, and that fraction is not uniform: rule corpora, classification, strategy
 drivers, and identity tables are naturally Vieta, while tight coefficient loops,
-the matcher, and polynomial arithmetic are naturally native. **Audit at M5**:
-measure the Vieta-source fraction of the library and the Vieta-level fraction of
-runtime. If the first is low, the premise failed.
+the matcher, and polynomial arithmetic are naturally native. **Standing metric**:
+the test suite reports the Vieta-source fraction of the library and the
+Vieta-level fraction of runtime, from the first Vieta source file onward. If the
+first is low and flat, the premise failed. A single audit at one milestone reports
+that after the code that failed it is written; a standing number reports it while
+the ratio is still moving.
 
 **Status: Decided.**
 
@@ -302,10 +304,26 @@ Layer A can never emit information, which would foreclose certificate modes.
 relying on `x + 2 === 2 + x` breaks if the boundary moves.
 
 **Required.** Write the specification, including the termination and confluence
-argument, before writing the code.
+argument, before writing the code. It is `docs/layer-a.md`, version 1: the
+canonical signature vocabulary, the canonical order, the pass sequence with the
+preconditions each pass establishes, the termination argument, and the canonicity
+theorem with the point where completeness deliberately stops.
 
-**Status: Decided (scope and policy), Open (written specification, before slice 1
-code).**
+**The criterion the specification turns on.** Layer A returns an `ExprId` and has
+nowhere to put a guard, a `Status`, or a second branch, so every law it applies
+holds with no side condition. `x^1 -> x` is in, `x^0 -> 1` is out because of
+`0^0`, and cancellation is out entirely, which is what keeps the condition on
+`(a^2-1)/(a-1)` from being deleted at construction.
+
+**One consequence worth having in the register.** The canonical order for
+commutative arguments is determined by content and never by id. Sorting on the id
+word breaks under GC renumbering (D8), disagrees between processes on the wire
+(D23), and makes canonical printed output depend on the order symbols were
+interned in, which forecloses an implementation-independent conformance suite.
+
+**Status: Decided (scope, policy, and the written specification). Open: whether
+construction gets a resource limit, which `docs/layer-a.md` §14 states as a
+decision rather than an oversight.**
 
 ---
 
@@ -578,7 +596,8 @@ complaint.
 **First implementation target is a bytecode VM**, not native ahead-of-time
 compilation. A JIT is a later option, not a prerequisite. The compilation path must
 exist **before a substantial self-hosted mathematical library is built**, because
-what is affordable to write shapes what gets written.
+what is affordable to write shapes what gets written. Read literally that means
+slice 1, which is D33.
 
 **Enabled by.** D13 and D19 make worlds cheap: a world is a session value plus the
 rule-set values reachable from it, so snapshotting is already the natural operation
@@ -756,6 +775,24 @@ Value     evaluated runtime object: closure, compiled function, dense matrix,
 > Everything is representable as a term. Not everything is stored as one.
 
 Specialized values reify into terms on demand rather than living as terms.
+
+The separation also carries the two readings of a written expression. Syntax
+preserves what was written, so `quote { y + x }` keeps that order. A term is
+canonical under its operators' shape laws (D36), so elaborating the same source
+yields `x + y`. Both equalities exist and neither is a compromise of the other.
+
+**What each representation is mathematically.** Syntax is a tree in the free term
+algebra, with nothing identified. A Term is an element of that algebra modulo the
+equational theory its operators carry (D36), which is where structural equality
+acquires meaning. Interpretation in a particular mathematical model is a third
+thing again, and it is the domain tower (D15, D16): the same term is read in
+`Q(a)` or in a finite field by choosing a domain, not by rebuilding the term.
+Value is orthogonal to all three and belongs to the machine (D34).
+
+Reading the three in order gives the reason the trichotomy is not an
+implementation convenience: free algebra, then quotient by a theory, then
+interpretation in a model. Collapsing any adjacent pair loses a distinction the
+mathematics makes.
 
 **Required: the reification contract, in writing.** Is reification total, or may a
 value refuse? Is it injective, so that reifying and re-evaluating yields an
@@ -974,6 +1011,317 @@ recorded because principles are what get eroded quietly.
 
 ---
 
+## D33. Layer B is compiled from slice 1; there is no tree-walking evaluator
+
+**Decision.** Vieta's evaluation layer is `Syntax -> compile -> bytecode -> machine`
+from the first working evaluator. No tree-walking interpreter is written: not as a
+prototype, not as a reference implementation, and not as a debugging path kept
+alongside the machine.
+
+**Justification.** Three arguments, and the third is the one that is hard to see
+from inside M0.
+
+D20 already requires the compilation path to exist before a substantial
+self-hosted library is built, because what is affordable to write shapes what gets
+written. Slice 1 writes library code, so "before" resolves to slice 1 rather than
+to M4.
+
+A tree-walking evaluator is the largest discardable artifact in the plan. Every
+line written against it before the machine arrives inherits its performance shape,
+and migrating them is the precise cost D20 exists to avoid paying.
+
+D20's world model is a compilation decision, and nothing exercises it until
+compiled code runs. Scheduling the machine at M4 defers the first honest test of
+world discipline until three milestones of semantics have been written on the
+assumption that it works.
+
+**Cost, stated plainly.** The machine has to exist before the language is
+demonstrable, so the first runnable Vieta arrives later than it would behind an
+interpreter. That is the trade: a later first result, against no rewrite and an
+earlier test of D20.
+
+**Scope.** Bytecode, not native ahead-of-time compilation; a JIT stays a later
+option (D20). Declarative rule sets continue to execute through the native matcher
+and are not compiled, per D20's scope table.
+
+**Alternatives rejected.** A tree-walking evaluator at M0 with the machine at M4,
+which is the sequencing this entry replaces. An interpreter retained beside the
+machine as a reference or debugging path, which is the primary-plus-fallback shape
+that guarantees two implementations diverge and makes every semantic question ask
+which one is authoritative.
+
+**Reversal cost.** Asymmetric, which is why it is registered rather than left as
+sequencing. Choosing the machine first and adding an interpreter later costs
+nothing anyone wants. Choosing the interpreter first and adding the machine later
+means rewriting the evaluator and re-tuning everything written against the
+interpreter, and the second cost is invisible while it accrues.
+
+**Status: Decided (no interpreter, bytecode in slice 1), Open (instruction set and
+calling convention, before the compiler).**
+
+---
+
+## D34. A term is one kind of runtime value
+
+**Decision.** The bytecode machine computes with `Value`s. A `Term` is one kind of
+`Value`, alongside integers, booleans, closures, compiled functions, domain
+elements, and native objects. A term-valued slot carries a reference into the
+store; the other kinds do not.
+
+**Derived rather than chosen**, which is the strongest form this entry could take.
+D26 already says Value and Term are distinct representations and that specialized
+values reify into terms on demand. D19 already says the store is a
+content-addressed pool growing monotonically between safepoints. Together those
+settle it: making every closure allocation an intern-table insertion would hash a
+captured environment on every call and place ephemeral mutable objects in a pool
+whose whole design is immutability and sharing.
+
+**What §0.6 does and does not claim.** Symbolic terms are first-class runtime
+values. That is a statement about terms being *among* the values, and D26 is the
+reason it is not a statement that values *are* terms.
+
+**Two storage situations, one integer.** `let i = 2` holds a runtime integer; the
+`2` in `quote { x + 2 }` is a symbolic occurrence inside a term. These are not two
+mathematical integers, and the conversions between them are invisible in the
+language: `term(2)` yields the symbolic occurrence and evaluating it yields the
+runtime integer. Whether either is a tagged immediate, and where the boundary to a
+side table falls, is encoding.
+
+**Alternatives rejected.** Everything is a term, which is Wolfram's uniformity;
+§2.8 of `architecture.md` rejects it for values on cost grounds and D19's
+monotonic pool rejects it for closures.
+
+**Reversal cost.** The semantic half is cheap to state and expensive to retrofit:
+a machine built on the assumption that every value is a term puts closures and
+native handles in the store, and taking them back out afterwards touches every
+value kind. The representation half carries no such cost while it stays internal,
+which is the point of keeping it there.
+
+**What it explicitly does not decide, and what is not to be frozen before
+measurement.** Whether the machine word is 64 bits, the tagging discipline, how
+small integers are encoded, whether closures are pointers or table indices, and how
+values appear in the bytecode format. These are engineering choices under
+measurement, and none of them may leak: opcodes are typed by value kind, so no bit
+pattern appears in the bytecode format, in the language semantics, or in any
+signature a Vieta program can observe. Kept internal, the representation stays
+revisable after the VM ships.
+
+**Status: Decided (a term is one kind of value; the representation stays internal),
+Open (every representation choice, deferred until the machine can be profiled).**
+
+---
+
+## D35. Term construction and destructuring compile
+
+**Decision.** Building a term and matching against a term pattern are **compiled**
+operations inside a Vieta function body. A compiled match tree is a function of the
+head's canonical signature, which D36 makes immutable, and of the world's matching
+policy, which is versioned and therefore a captured dependency.
+
+**Justification.** §0.6's `differentiate` is the characteristic function of the
+self-hosted library, and its body is control flow: recursion, dispatch on
+structure, a higher-order map, a guard. D20's scope table puts control flow in the
+"compilation path, required" column. Reaching the destructuring through an
+interpretive call into the native matcher with a runtime pattern term would leave
+the recursion compiled and the taking-apart interpreted, which is where a symbolic
+library spends its time. Half-compiling the characteristic function forfeits most
+of what D33 was for.
+
+**Why the laws have to stop being ambient.** Matching `Add(terms...)` is matching
+modulo the laws declared on `Plus`. A compiled match tree is therefore a function of
+those laws, which makes them a dependency of compiled code, which under D20 makes
+them explicit, captured, or versioned. D36 splits them and the two halves land in
+different places: the canonical signature belongs to the operator identity and
+cannot move, so the compiler reads it once and carries no dependency edge for it,
+while matching policy is world state and is captured and invalidated like any other
+world dependency. Mathematica keeps all of it in ambient mutable global state,
+which is a sufficient reason why matching there cannot be compiled.
+
+**Boundary with D20's scope table, which is unchanged.** A declarative rule set
+executes through the native matcher. A `match` in a function body compiles. The
+two mechanisms differ in whether the pattern is known when the code is compiled,
+and D28's function/rule/strategy split is what makes the question answerable.
+
+**What "compiles" claims, stated narrowly so the entry does not overreach.** The
+discrimination between arms, the binding of pattern variables, the guard, and the
+arm bodies become bytecode. Matching modulo `Orderless` and `Flat` involves a
+search over argument groupings that no decision tree removes, so the compiled code
+calls native search routines at those points, with the pattern shape and the
+canonical signature fixed at compile time rather than re-read per call. D1's
+placement of the matcher in the permanent host layer stands; what moves is the
+dispatch and the per-call re-interpretation of a pattern that was already known.
+
+**Consequence for D10.** The Layer A specification has to say what a compiler reads
+to obtain the laws, because this entry makes them a compile-time input rather than
+a runtime lookup. D36 answers it: the operator entry reached through the head id.
+
+**Prior art to read rather than derive.** Maude compiles matching modulo
+associativity, commutativity, and identity. That is the hardest single piece of
+Vieta's kernel and it has a literature; §4 of `architecture.md` covers what to
+take.
+
+**Alternatives rejected.** `match` over terms as a library call taking a runtime
+pattern term, which is the interpretive half described above. Attributes as
+ambient global properties of a symbol, which is the Mathematica arrangement and
+forecloses compiled matching permanently.
+
+**Reversal cost.** Low, now that D36 carries the durable half. The match-tree
+representation is replaceable engineering behind D14's contract, and the decision
+to compile rather than interpret costs only the compiler work already budgeted by
+D33.
+
+**Status: Decided (term patterns in function bodies compile), Open (match-tree
+representation and its handoff to the native matcher, with the compiler).**
+
+---
+
+## D36. A term is an element of a quotient algebra, and the theory is carried by its operators
+
+**What a term is.** A signature of operators with arities freely generates the
+term algebra `T(X)`, in which `(x+2)+y` and `x+(2+y)` are different trees.
+Declared laws generate a congruence `=E` on it, and a Vieta term denotes an
+element of the quotient `T(X)/=E`. Layer A stores one representative per class,
+and `ExprId` equality is equality in the quotient. That is the whole content of
+"structural equality means something".
+
+This makes the immutability rule below a mathematical statement rather than an
+engineering accommodation. Declaring `Times` commutative after terms exist does
+not adjust a flag on a symbol. It replaces one quotient with another, in which
+different terms are equal, so stored representatives stand for classes the new
+theory does not have. Redefining `f(x) = x^2` as `f(x) = x^3` moves no class at
+all and changes only what a call computes. The two operations are unlike each
+other at the level of the mathematics, which is why they land in different rows
+of the table below.
+
+**Decision.** "Attribute" covers four unrelated things, and only the first of them
+determines what a term is.
+
+| Kind | Examples | Determines | Where it lives |
+|---|---|---|---|
+| Canonical-shape law | associativity, commutativity, idempotence, unit, zero | the stored structure, therefore `ExprId` | the operator identity, immutable |
+| Definition | `f(x) = x^2` | what a call computes | the world, versioned |
+| Matching policy | Mathematica's `OneIdentity` | how a pattern matches an existing term | the world, versioned |
+| Display metadata | precedence, fixity, notation | how a term prints | the world, versioned |
+
+A term head is a resolved **operator identity**. Elaboration resolves the printed
+`+` in a world to `Core.Plus`, and the term stores that. A later world binding `+`
+differently binds it to a *different* operator and does not mutate `Core.Plus`.
+Layer A therefore reads the shape laws through the head id with no world in hand,
+and `Store::app(&self, head, args)` keeps the signature it already has.
+
+**The theory is carried by the heads, and needs no separate index.** Each
+operator's laws are fixed at its identity, so the theory of a term is a function
+of the operators occurring in it. A theory identifier stored alongside a term
+would encode the same fact more coarsely: a term mixing a commutative `Plus` with
+a non-commutative `Times` has a theory that is the union of two per-operator
+theories, so per-operator is the compositional form and a per-term tag is a
+summary of it. Two structures over one printed name are two operators, which is
+what `x * y` elaborates to differently in `CommutativeRing(Q, [x, y])` and in
+`FreeAssociativeAlgebra(Q, [x, y])`. One source string, two free structures, two
+terms that are correctly not comparable.
+
+**One relation is not a per-operator law.** `x + x = 2*x` relates `Plus` to
+`Times`, and no signature of either states it. `=E` is generated by the declared
+signatures together with a fixed set of relations among the kernel's arithmetic
+operators. That second part is the mathematical reason the kernel heads are a
+closed set: the relations determining term identity are fixed, so no declaration
+can enlarge the quotient governing operators already in shared use and invalidate
+representatives already interned. `docs/layer-a.md` §4 calls these the two sources
+of normalization.
+
+The closure is on identity and not on what can be said. `D(f + g) = D(f) + D(g)`
+and `transpose(A + B) = transpose(A) + transpose(B)` are cross-operator relations
+and most of the subject is built from them. They live above Layer A, in rule sets
+(D13), domain normalizers (D15), and guarded transformations (D3), where a
+relation determines what a term rewrites to and leaves what a term is alone. A
+user may also declare a new operator family with its own laws and get a genuine
+quotient of its own. The single unavailable operation is retroactive enlargement
+over shared operators.
+
+**Declared once, immutable afterwards.** Declaring `f` associative when terms
+headed by `f` already exist is rejected. The two answers available to the user are
+to declare a different operator, or to bind the printed name to a new one in a new
+scope. It is the same restriction as being unable to add two fields to a struct
+and go on calling it the same type.
+
+**Implementation.** Intern the operator on `(module path, name)` and store its
+canonical signature in the entry. Redeclaring an identical signature is the same
+operator, which makes module reload idempotent. Redeclaring a different signature
+under the same key is the error above. A new module path is a new key and
+therefore a new operator, which is what makes the escape hatch work. No generation
+counter appears anywhere, because the operation that would produce a second
+generation is the one being forbidden.
+
+**Ordinary redefinition never touches term identity.** `f(x) = x^2` becoming
+`f(x) = x^3` changes what `f(a)` computes and leaves `f(a)` the same term. Rules,
+domains, assumptions, notation, and matching policy are the same case. Only the
+canonical signature sits in the identity, and the canonical signature is the one
+thing a user is not invited to change after the fact.
+
+**Syntax keeps what was written; terms are canonical.** `quote { y + x }` preserves
+the source order, because quotation yields Syntax (D26), which is neither
+normalized nor interned. Elaborating the same source into a term under `Core.Plus`
+yields the canonical `x + y`. Syntax equality and term equality answer different
+questions, both are available, and neither is traded for the other.
+
+**The law vocabulary is closed.** Layer A normalizes against a fixed kernel set of
+laws. Arbitrary user equations never enter it: `sin(x)^2 + cos(x)^2 == 1` is an
+equational theory for the simplifier and for D13's rule sets, and it takes no part
+in construction. This is D10's "not arbitrarily user-extensible" made concrete, and
+it is what keeps Layer A's termination and confluence argument finite.
+
+**What this hands to the Layer A specification.** Three bounded things. D10's scope
+already folds annihilators, so the vocabulary carries a zero element alongside the
+unit. Collecting like terms is arithmetic on the kernel's numeric heads instead of
+a law any operator can declare, so the specification describes two sources of
+normalization and says which is which. A unit is itself a term, so a signature
+refers to terms whose heads are operators; declaration order makes that
+well-founded, and a signature naming a unit headed by the operator being declared
+is rejected.
+
+**One naming trap, stated because it recurs.** `OneIdentity` in Mathematica is a
+pattern-matching convention about `f[x]` standing for `x` while matching. It is not
+the claim that the operator has an identity element, and it changes nothing about
+what is stored, so it belongs to matching policy. The algebraic fact that `Plus`
+has `0` as a unit is a different fact and belongs to the canonical signature. Vieta
+names the two separately instead of inheriting the mixed attribute bag.
+
+**Alternatives rejected.** Laws as world state with normalization relative to a
+context, which costs D10 and D11 and drops `ExprId` equality from structural
+equality of mathematical expressions to equality of unnormalized syntax. That is
+the right model for Syntax and the wrong one for Terms. A fresh operator identity
+on every redeclaration, which makes the forbidden operation silent instead of
+impossible and hands the canonical printer a disambiguation problem for no gain.
+A theory identifier in the intern key or a store per theory, which encodes what
+the heads already determine, splits the pool so that a subterm common to two
+theories is stored twice, and threads a theory argument through every construction
+site that the head already carries.
+
+**Why this is the entry that matters.** Two reasons, one mathematical and one
+operational.
+
+Changing a shape law changes which terms are equal, so it is a change of quotient
+and not a change of configuration. Terms already stored were chosen as
+representatives of classes that the new theory does not have, and there is no
+sense in which they can be brought forward.
+
+Operationally, the same fact appears as an asymmetry between code and data. A
+compiled function that assumed `Orderless` on `Plus` can be invalidated and
+recompiled. A node already flattened under `Flat` cannot: it is in the pool,
+shared by everything that references it, held by live sessions, caches, and
+derivations, with no recompile step for data. World capture handles code and does
+not reach terms. Putting the shape laws in the identity removes the case instead
+of managing it.
+
+**Reversal cost.** Every term ever built, and the meaning of every equality in the
+system. This is D10's reversal cost at the point where it actually gets decided.
+
+**Status: Decided.** The signature vocabulary is fixed in `docs/layer-a.md` §3:
+`associative`, `commutative`, `idempotent`, `unit`, `zero`, with `OneIdentity`
+kept out of it for the reason above.
+
+---
+
 ## Note: the executable specification
 
 Not a numbered decision because it is not irreversible, but recorded because the
@@ -999,16 +1347,18 @@ that actually survives.
 |---|---|---|
 | Binder encoding (indices, levels, locally nameless) | Slice 1 ships | D6 |
 | Enumeration of what binds | Before choosing the encoding | D6 |
-| Tag-bit layout in the id space | Slice 1 | D7, measure during the spike |
-| Layer A written specification | Slice 1 code | D10 |
+| Tag-bit layout in the id space | Slice 1 | D7, measured in the store itself, §1.9 |
+| Bytecode instruction set and calling convention | Before the compiler | D33 |
+| Resource limit at construction, or none | Before the store holds anything | D10, D22, `layer-a.md` §14 |
+| Machine value representation, all of it | After the machine can be profiled | D34 |
+| Match-tree representation and matcher handoff | With the compiler | D35 |
 | Matching semantics contract content | Rule count in the low hundreds | D14 |
-| Canonical ordering for `Orderless` arguments | Slice 1 | D10 |
 | Reification contract (totality, injectivity, value/term equality) | Slice 1 ships | D26 |
 | Surface syntax | Slice 1 | Explicit `*` in core; implicit multiplication confined to a marked math-input mode |
 | Strategy combinator vocabulary | Rule corpus past a few dozen | D28 |
 | Store GC algorithm | M1 | D8, epoch or region-based with compaction is the working assumption |
 | Conformance suite format | M1 | Implementation-independent |
-| FLINT `gr` capability audit | M2 | D15, no dependency on slice 1, can start now |
+| FLINT `gr` capability audit | M2 | D15, no dependency on the spine, can start now |
 | Native cancellation strategy | M2 | D22 |
 | World invalidation versus pinning policy | M4 | D20 |
 | Effects checked versus declared | M4 | D30 |

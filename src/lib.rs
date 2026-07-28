@@ -12,8 +12,6 @@
 //! `docs/architecture.md` (architectural assessment) and `docs/decisions.md`
 //! (irreversible-decision register), both in the repository.
 
-#![forbid(unsafe_code)]
-
 /// The version of this crate, as recorded in `Cargo.toml`.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

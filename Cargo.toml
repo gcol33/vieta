@@ -1,15 +1,33 @@
-[package]
-name = "vieta"
+[workspace]
+members = ["crates/*"]
+
+[workspace.package]
 version = "0.0.0"
 edition = "2024"
 rust-version = "1.85"
-description = "A strict, expression-oriented functional-rewrite language for computer algebra."
 repository = "https://github.com/gcol33/vieta"
 homepage = "https://github.com/gcol33/vieta"
 license = "MIT"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[package]
+name = "vieta"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+description = "A strict, expression-oriented functional-rewrite language for computer algebra."
 readme = "README.md"
 keywords = ["computer-algebra", "symbolic", "rewriting", "cas", "language"]
 categories = ["mathematics", "compilers"]
 include = ["src/**/*", "README.md", "LICENSE", "docs/**/*"]
+
+[lints]
+workspace = true
 
 [dependencies]

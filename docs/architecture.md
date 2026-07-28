@@ -1,7 +1,7 @@
 # Vieta: Architectural Assessment
 
-Revised 2026-07-27. Companion document: `decisions.md` (the irreversible-decision
-register, renumbered in this revision to follow the order of this document).
+Revised 2026-07-28. Companion document: `decisions.md` (the irreversible-decision
+register, renumbered to follow the order of this document).
 
 Settled since the first draft: the host language is Rust, the mathematical
 library self-hosts in Vieta, and conditions lead the differentiator sequence. The
@@ -12,9 +12,9 @@ more than the conclusion.
 
 ## 0. Verdict in one page
 
-§0.5 states what Vieta *is*, and is prior to everything here. Given that, four
-decisions determine whether Vieta reaches its endpoint. Everything else is
-recoverable engineering.
+§0.5 and §0.6 state what Vieta *is*, and are prior to everything here. Given
+that, five decisions determine whether Vieta reaches its endpoint. Everything
+else is recoverable engineering.
 
 **D2. Vieta distinguishes four meanings of equality before simplification rule
 one.** Structural, domain, provable, extensional. `(a^2-1)/(a-1)` and `a+1` are
@@ -36,6 +36,11 @@ reasoning impossible.
 **D13 and D19. Rule sets and session state are values.** These were justified on
 soundness and reproducibility grounds. They turn out also to be the decisions
 that make Vieta code compilable, which the self-hosting thesis requires (§3).
+
+**D33. Layer B is compiled from slice 1.** Syntax lowers to bytecode and a machine
+runs it. No tree-walking evaluator is written. The compilation path decides what is
+affordable to write in Vieta, so it has to exist before the library it is meant to
+carry rather than after it (§3.1).
 
 The organising thesis, which everything else serves:
 
@@ -82,6 +87,116 @@ traversal policy (§2.10), macros as symbol substitution (§2.11), untracked eff
 
 Registered as D25 through D32. Exact syntax and internal encodings stay open until
 the semantic contracts in §2 are written down.
+
+---
+
+## 0.6 What the artifact is
+
+Two properties are routinely fused and are independent axes. One is mathematical
+breadth: how much algebra, calculus, number theory, and analysis the system knows.
+The other is the execution model for symbolic work: whether transformation runs
+through a dynamic evaluator or through compiled code.
+
+```
+                        mathematical breadth
+                               high
+                                |
+                Mathematica     |     Vieta's target
+                                |
+   evaluated symbolic ----------+---------- compiled symbolic
+                                |
+                Maude, Stratego |
+                                |
+                               low
+```
+
+Mathematica has the breadth, reached on an evaluator that rewrites to fixpoint.
+Maude and Stratego execute symbolic transformation as compiled languages and
+carry no mathematical library. Vieta is aimed at the quadrant holding both, and
+that aim is what §3's self-hosting thesis and D33 are for.
+
+The positioning follows:
+
+> **Vieta is a programming language. The computer algebra system is its largest
+> standard library.**
+
+### What compiled symbolic execution means
+
+A conventional compiler consumes syntax and emits code operating over numbers,
+strings, records, and objects. Program structure is a compile-time artifact and
+stops being a runtime value at the end of compilation.
+
+Vieta compiles the control flow, the recursion, the branching, and the calls.
+Terms, patterns, guards, domains, and obligations remain first-class runtime
+values. **What gets compiled is the machinery that manipulates symbols.**
+
+The characteristic function is the one that takes a term apart. Surface syntax is
+illustrative and open:
+
+```
+fn differentiate(expr, x) =
+    match expr {
+        Add(terms...) =>
+            Add(map(fn(t) = differentiate(t, x), terms)...)
+        Mul(a, b) =>
+            differentiate(a, x) * b + a * differentiate(b, x)
+        _ when free_of(expr, x) =>
+            0
+    }
+```
+
+The recursion, the dispatch, the map, and the guard compile. `expr`, the `Add`
+pattern, and the result term stay symbolic. That is a different artifact from an
+expression library embedded in Rust or Python, where the host compiles and the
+symbolic layer is data the host interprets. Two register entries carry the
+consequences: D34 fixes that a term is one kind of runtime value, and D35 fixes
+that the destructuring compiles alongside the recursion.
+
+### Where the mathematics sits
+
+```
+Vieta language
+  |- symbolic term runtime
+  |- rules and strategies
+  |- domains and obligations
+  |- compiler and bytecode machine
+  |- module system
+  `- standard libraries
+       |- algebra
+       |- calculus
+       |- differential equations
+       |- number theory
+       |- probability
+       `- symbolic-numeric compilation
+```
+
+This re-reads §10 without moving anything in it, which is the useful check on the
+framing. M0 is the language. M1, M2, M3, and M5 through M7 are standard-library
+milestones on a kernel that already exists, and M4 is the point where the library
+starts being written in the language it belongs to. The sequence was already
+shaped this way; naming the artifact makes the shape legible rather than
+incidental.
+
+### The traditions being combined
+
+Each exists separately and each holds one part:
+
+| Tradition | Its first-class symbolic objects |
+|---|---|
+| Computer algebra (Mathematica, Maple, SymPy) | mathematical expressions |
+| Rewriting languages (Maude, ELAN) | equations, rules, strategies |
+| Metaprogramming languages (Stratego, Rascal) | programs and syntax |
+| Proof assistants (Lean, Coq, Agda) | propositions and proofs |
+| Compiled functional languages (OCaml, Haskell) | none; they compile the rest |
+
+Wolfram Language is the closest unified precedent, holding mathematical breadth
+and expression-as-code uniformity together with compilation facilities, on
+evaluation semantics that grew around a dynamic global evaluator. Maude is a
+genuine executable symbolic language whose centre is rewriting logic and
+verification. Stratego covers the transformation half and transforms programs.
+Rascal treats source as data for analysis and transformation. What none of them
+holds is a mathematical universe with assumptions, partial equality, and exact
+arithmetic sitting on a compiled symbolic core.
 
 ---
 
@@ -202,27 +317,38 @@ is not uniformly distributed.
 
 High by line count, lower by runtime. That is the correct outcome, and it means
 the decision rule in §1.1 is falsifiable. Make it auditable rather than
-permanent-by-assumption: **at M5, measure what fraction of the mathematical
-library is Vieta source and what fraction of runtime is spent in Vieta-level code.**
-If the first number is low, the premise failed, and finding out in year three
-beats finding out in year eight.
+permanent-by-assumption: **measure the Vieta-source fraction of the mathematical
+library and the Vieta-level fraction of runtime, as a standing metric the test
+suite reports from the first Vieta source file onward.**
 
-### 1.9 The measurement spike, one half-week
+A checkpoint at one milestone reports that the premise failed after the code that
+failed it is already written. A standing number reports it while the ratio is
+still moving, which is the only time the reading is actionable.
 
-The language comparison arm is gone. The absolute numbers still inform the design.
+### 1.9 The measurements, taken in place
 
-1. **Interned store.** Hash-cons table, flat argument array, tagged small
-   integers, `Word32` id space. Load a synthetic corpus of a few million nodes
-   with heavy sharing. Measure construction throughput, memory per node,
-   structural-equality throughput, whole-store walk time.
-2. **Matcher under load.** A candidate index over a synthetic rule corpus in the
-   low thousands, matched against corpus (1). Measure throughput and how it
-   degrades with rule count. This number decides whether Vieta can carry a
-   Mathematica-scale rule library.
+The language comparison arm is gone, and with it the reason to build a throwaway
+prototype to carry it. The absolute numbers still inform the design, so take them
+from the real components, before anything depends on the answers.
+
+1. **Interned store.** The store *is* the first measurement. Hash-cons table, flat
+   argument array, tagged small integers, `Word32` id space, built as the shipping
+   component with its stress harness in-crate. Load a synthetic corpus of a few
+   million nodes with heavy sharing. Measure construction throughput, memory per
+   node, structural-equality throughput, whole-store walk time. Take the numbers
+   while the tag layout is still free to move, which is the window D7 is about.
+2. **Candidate index under load.** An index over a synthetic rule corpus in the
+   low thousands, run against corpus (1). This measures the *index* rather than the
+   matcher, which is the right thing to measure before D14's semantics are settled,
+   and it is the number deciding whether Vieta can carry a Mathematica-scale rule
+   library. It follows the store because it has nothing to run against until terms
+   exist.
 3. **FLINT round-trip under pressure.** A hundred thousand short-lived small
    `fmpz_poly` objects through your intended arena discipline. Watch resident
-   memory across the run. This now tests the arena design rather than a
-   collector, and it is where the mistake in §7.5 shows up if you made it.
+   memory across the run. This tests the arena design rather than a collector, and
+   it is where the mistake in §7.5 shows up if you made it. It belongs with the
+   `gr` capability audit (§5.2) rather than with (1) and (2): both size M2, both
+   need FLINT built, and neither blocks slice 1, which carries no FFI.
 
 ### 1.10 What does not change with the language
 
@@ -276,6 +402,12 @@ user-extensible. Flatten `Flat` heads, sort `Orderless` arguments canonically,
 fold exact numbers, apply identity and annihilator laws, collect like terms. Runs
 at construction. This is what makes `x + 2` and `2 + x` the same `ExprId`, and
 therefore what makes structural equality mean anything.
+
+`docs/layer-a.md` is the specification. It sharpens one word above: because
+construction is bottom-up and every argument is already normal, Layer A is a
+function applied once per node rather than a relation run to a fixpoint, so the
+property it owes is canonicity of that function, and confluence of a rewrite
+system over arbitrary terms is a larger obligation than the design incurs.
 
 Layer A is **deterministic, terminating, versioned, and replayable**, and is
 therefore **omitted from normal derivation traces**. Its effect is reconstructible
@@ -656,6 +788,15 @@ needs compiling is the imperative and recursive scaffolding around them, and it
 needs it **before a substantial self-hosted mathematical library is built**, not
 after, because the library's shape is influenced by what is affordable to write.
 
+Taken literally, "before" means slice 1, and that is D33. A tree-walking evaluator
+built at M0 and replaced when the machine arrives is the largest discardable
+artifact in the plan, and every line written against it in the interval inherits
+its performance shape. D20's world discipline is a compilation decision, so
+nothing exercises it until compiled code runs; deferring the machine defers the
+first honest test of the world model past several milestones of semantics written
+on the assumption that it works. The machine is smaller than the matcher and the
+ground is well trodden. Build it once, early, and never build the other one.
+
 ### 3.1.1 Immutable versioned worlds, not a ban on late binding
 
 The naive form of this requirement is that no feature may require late binding.
@@ -738,7 +879,10 @@ matcher and Layer A what shape a head has, which is declarative and local.
 `Hold*` telling the evaluator to suspend its own recursion in one of several
 partially overlapping ways is control flow smuggled into a symbol's metadata.
 Vieta takes the first and expresses the second through quotation and holding
-constructs that are visible at the use site (§2.7).
+constructs that are visible at the use site (§2.7). D36 makes "declarative and
+local" concrete by splitting the attribute bag four ways: canonical-shape laws
+belong to the operator identity and are immutable, while definitions, matching
+policy, and notation are versioned world state.
 
 **Racket.** Take the syntax model: syntax objects carrying lexical context, phase
 separation between expansion and evaluation, module-scoped bindings, and hygiene
@@ -763,6 +907,16 @@ associative-commutative matching. Take Maude's separation of rules from the
 `bottomup`, `innermost`, `try`, `repeat`). A simplification engine wants exactly
 this vocabulary; Mathematica's lack of it is why its transformation control is a
 pile of special cases.
+
+Take Maude a second time, for the thing §0.6's diagram understates. Maude compiles
+matching modulo associativity, commutativity, and identity, and that is the
+hardest single piece of Vieta's kernel (D35). On the execution axis it sits
+further toward compiled symbolic execution than its mathematical breadth suggests,
+which makes it the implementation to read rather than the sibling to surpass. The
+same holds for the rewriting-logic literature behind it: compiled equational
+matching is a solved problem with a published record, and the failure mode
+available here is deriving a weaker matcher from first principles and giving it a
+standard name.
 
 **Axiom and FriCAS.** Take the category and domain distinction, categories as
 theories and domains as implementations, and the underlying insight that
@@ -894,9 +1048,15 @@ from the critical path.
 
 ## 6. Expression store architecture
 
-**Node layout.** `(HeadCode: Word32, Arity: Word32, ArgOffset: Word32)` into a
-flat `Word32` argument array. Atoms in side tables: symbol ids, exact numbers
-(inline when small, handles when large), machine literals, native handles.
+**Node layout.** `(Head: ExprId, Arity: Word32, ArgOffset: Word32)` into a flat
+`Word32` argument array. Atoms in side tables: symbol ids, exact numbers (inline
+when small, handles when large), machine literals, native handles.
+
+The head is an ordinary id rather than a separate code space. A symbol head is a
+symbol-tagged id, so the general case costs nothing, and computed heads
+(`f[x][y]`, `Derivative[n][f]`) work without a second mechanism. A distinct
+head-code space would foreclose them, and §4 takes exactly the Mathematica
+constructs that need them.
 
 **Interning.** Open-addressed hash-cons table keyed on head plus arguments,
 yielding `ExprId`. Structural equality is a `Word32` comparison.
@@ -1092,6 +1252,10 @@ Full register with alternatives and reversal costs in `decisions.md`.
 | 30 | Effects are explicit and visible to the compiler (§2.12) |
 | 31 | Multiple dispatch is constrained by ownership (§2.13) |
 | 32 | Internal mutation is permitted and must be unobservable |
+| 33 | Layer B is compiled from slice 1; there is no tree-walking evaluator |
+| 34 | A term is one kind of runtime value (§0.6) |
+| 35 | Term construction and destructuring compile (§0.6) |
+| 36 | A term is an element of a quotient algebra, and the theory is carried by its operators |
 
 Numbering is append-only from this revision onward. D25 is the constitutional
 statement and logically precedes D1; it is numbered last to keep existing citations
@@ -1133,7 +1297,8 @@ to show conditional simplification, REPL.
 - **Binary store-segment serialization** with a round-trip test.
 - **A candidate index behind the matcher contract**, with the contract written
   down even though the first index is trivial.
-- **Fuel and abort in the evaluation context**, checked in the rewrite loop.
+- **Fuel and abort in the evaluation context**, checked in the bytecode dispatch
+  loop and the rewrite loop.
 - **Session state as a value**, with save, restart, resume.
 
 **From the constitution (§0.5), the parts that must exist in slice 1 because they
@@ -1141,6 +1306,9 @@ are foreclosed otherwise:**
 
 - **Strict evaluation with lexical scope and closures.** The default, established
   before any code depends on an evaluation order.
+- **Layer B compiled, not interpreted** (D33). Syntax lowers to bytecode and the
+  machine runs it. There is no tree-walking evaluator to replace later, and D20's
+  world model gets its first exercise here rather than at M4.
 - **Quotation as a construct distinct from the delay mechanism** (§2.7), even
   though slice 1 has nothing to delay yet. The two must never share a keyword.
 - **The Syntax / Term / Value distinction visible in the implementation** (§2.8),
@@ -1158,8 +1326,8 @@ are foreclosed otherwise:**
 (§2.11), the effect system (§2.12), multiple dispatch (§2.13), laziness (§2.7).
 Each has a written contract before it has an implementation.
 
-**Leave out:** the domain tower, all FFI, the compiler, the bytecode machine, the
-R DSL, e-graphs, and every mathematical algorithm beyond differentiation.
+**Leave out:** the domain tower, all FFI, native code generation and JIT, the R
+DSL, e-graphs, and every mathematical algorithm beyond differentiation.
 
 ### 9.1 The acceptance demo
 
@@ -1201,7 +1369,8 @@ Jupyter's channel model is a reasonable reference for message shape.
 Sizing bands assume solo work at a serious sustainable pace. Variance past M3 is
 large.
 
-**M0. Kernel and language.** Slice 1. *Months.*
+**M0. Kernel and language.** Slice 1, the bytecode machine included (D33).
+*Months.*
 Unlocks everything. Over-investment here pays back longest, per §1.8.
 
 **M1. Exact arithmetic and canonical rational forms.** FLINT-backed integers and
@@ -1226,19 +1395,22 @@ closure, tier 2 linear arithmetic, tier 3 escalation with budgets. `Piecewise`
 algebra. Obligation propagation through every existing rule. *Months to a year.*
 From here Vieta does something no other system does.
 
-**M4. Bytecode machine and the first self-hosted library.** Vieta compiles ahead of
-time. The derivative table, trig identities, and the first classification logic
-move into Vieta source. *Months.*
+**M4. The first self-hosted library.** The derivative table, trig identities, and
+the first classification logic move into Vieta source, on the machine M0 already
+built. *Months.*
 Placed before the heavy mathematics deliberately: the library that gets written
 after this point gets written in Vieta, and the earlier that switch happens the
-less native code has to be migrated later.
+less native code has to be migrated later. With the machine in M0 the switch can
+begin earlier still, and the standing self-hosting metric (§1.8) is what reports
+whether it is happening.
 
 **M5. Calculus.** Limits by the Gruntz algorithm rather than heuristics. Lazy
 formal power series, exercising D21. Integration: Risch for the rational and
 transcendental-elementary cases, plus a Rubi-style rule corpus written in Vieta.
 *A year or more.*
-**Self-hosting audit checkpoint** (§1.8): measure the Vieta-source fraction of the
-library and the Vieta-level fraction of runtime.
+By here the standing self-hosting metric (§1.8) has a long enough history to read
+as a trend rather than a reading. If the Vieta-source fraction is flat, D1's
+premise failed and this is the last milestone at which acting on that is cheap.
 
 **M6. Equation solving.** Univariate over radicals plus `RootOf` with real root
 isolation. Linear systems over domains. Triangular decomposition and Groebner via
@@ -1334,7 +1506,10 @@ CAS integrates it.
    integration, and resultants. No architecture removes it; you need modular,
    p-adic, and evaluation-interpolation algorithms throughout, which is the deepest
    reason FLINT matters.
-8. **An interpreted library language.** SymPy. §3.1.
+8. **An interpreted library language.** SymPy. §3.1. The near-miss version is
+   building a tree-walking evaluator for now and scheduling the compiler for
+   later. By the time later arrives the library exists and its shape was set by
+   what the interpreter made affordable. D33.
 9. **Building the notebook UI before the semantics.** This has consumed years of
    more than one project.
 10. **Reimplementing bignums and polynomial arithmetic.** Already rejected. Stay
@@ -1365,7 +1540,18 @@ CAS integrates it.
     methods, rewrite rules, and rule sets. Each is right for something. Without a
     written answer to "method or rule", the library accretes both for the same job
     and the answer becomes whichever the author preferred that week. §2.13.
-21. **Single-maintainer project death.** Named even for a deliberately solo
+21. **Compiling the control flow and interpreting the destructuring.** The subtler
+    relative of trap 8, and it survives D33. A machine that compiles recursion,
+    branching, and calls, then reaches term patterns through an interpretive call
+    into the native matcher, leaves the characteristic function of the self-hosted
+    library half-compiled at the half where the time goes. D35.
+22. **Normalized terms outliving the laws they were normalized under.** Compiled
+    code that assumed `Orderless` on `Plus` can be invalidated and recompiled. A
+    node already flattened under `Flat` cannot: it is in the pool, shared, and held
+    by live sessions and caches, with no recompile step for data. Dependency
+    capture reaches code and not data, which is why D36 puts the shape laws in the
+    operator identity and forbids the redeclaration instead of managing it.
+23. **Single-maintainer project death.** Named even for a deliberately solo
     project. Maxima and REDUCE survived by being ported and cultivated by small
     niche communities; Axiom fragmented into forks. For a solo project the
     mitigation is not recruiting, it is making the artifact survivable: a written
@@ -1375,15 +1561,15 @@ CAS integrates it.
 
 ---
 
-## 12. The first two weeks
+## 12. The opening sequence
 
-**Days 1 to 3.** The measurement spike in §1.9. Store, matcher under load, FLINT
-round-trip under arena discipline. Write the numbers down.
+**The specification block, ahead of the code that depends on each entry.**
 
-**Days 4 to 8.** Write, before any implementation:
-
-- the Layer A normalization specification, including its termination and
-  confluence argument;
+- the Layer A normalization specification, written as `docs/layer-a.md`: the
+  signature vocabulary, the canonical order, the pass sequence, the termination
+  argument, and the canonicity theorem with the point where completeness stops;
+- the enumeration of what binds, which the store's traversal API has to cover
+  (D6);
 - the four-way equality taxonomy with the language-level predicates;
 - the `RewriteResult` and `Obligation` types;
 - the `Truth`/`Status` split;
@@ -1393,18 +1579,45 @@ round-trip under arena discipline. Write the numbers down.
 - the signatures of the five operations, including what `prove` may and may not
   return (§2.9);
 - the function / rule / strategy split and the initial strategy combinators
-  (§2.10).
+  (§2.10);
+- the value kinds the machine computes with (D34), which precede the instruction
+  set because every opcode signature quotes them, and which say nothing about how
+  a value is represented;
+- the bytecode instruction set and calling convention (D33).
 
 The block grew when the language design settled, and this is the right place for
 it to grow. It is the smallest set of documents with the largest blast radius, and
 it is what you will want in hand when you are debugging a non-confluence in year
-three.
+three. Not every entry gates the first line of code: the Layer A specification
+gated the store and is written, the binder enumeration gates the store's
+traversal API, the value kinds gate the instruction set which gates the compiler,
+and the matcher contract has until the rule count reaches the low hundreds.
 
-**Days 9 to 14.** Store, parser, canonical printer, and the round-trip property
-test. Nothing else. Get the id space, the tag bits, and the safepoint invariant
-right while being wrong is still cheap.
+**The spine, in order, each piece shipping rather than prototyping.**
 
-In parallel, whenever it fits: the FLINT `gr` capability audit (§5.2). It has no
-dependency on any of the above and it sizes M2.
+```
+store  ->  Syntax and parser  ->  compiler  ->  bytecode machine
+                                                     |
+                                        canonical printer, round-trip test
+```
+
+The store comes first because everything else holds ids into it, and because the
+id space, the tag bits, and the safepoint invariant are the decisions that turn
+into a whole-codebase audit if they move later (D7, D8). It carries its own
+measurements (§1.9) and its tag layout is settled from them before anything else
+holds an id.
+
+The parser produces Syntax and never terms (D26); a parser emitting terms directly
+is the shortcut that forecloses hygienic macros. The compiler targets Syntax, so
+surface-syntax churn reaches the parser and stops there.
+
+The first demonstrable result is a Vieta expression that parses, compiles, runs on
+the machine, and prints. Layer A lands next, and with it `x + 2` and `2 + x`
+collapsing to one `ExprId`. Then rules, guarded sets, and strategies, on a
+language that already runs.
+
+**In parallel, whenever it fits.** The FLINT `gr` capability audit (§5.2) and the
+arena measurement (§1.9 item 3). Neither has a dependency on the spine, both need
+FLINT built, and together they size M2.
 
 Everything after that is §9.
