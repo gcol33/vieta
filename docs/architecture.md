@@ -1797,9 +1797,9 @@ and most of their content is already registered.
 | Choosing a form | D27 names a cost function and never says what it ranges over, §13.2 |
 | Mathematical algorithms | M2 through M9, accumulated labour and no foundational uncertainty |
 | Trust and verification | D4, D3, D24, with the case in §13.3 falling outside all three |
-| Language infrastructure | §10 |
+| Language infrastructure | §10, except observation of a running program, §13.6 |
 
-Five items in that map belong to no entry. Each is small enough to state now and
+Six items in that map belong to no entry. Each is small enough to state now and
 large enough to change an interface if it is found late.
 
 ### 13.1 What binds, past the cases D6 lists
@@ -1962,3 +1962,32 @@ family has run through it.
 This is the piece with the largest gap between how much of it is written and how
 much of the system passes through it. It is also the piece where being early is
 cheapest, since every mathematical algorithm in M2 through M9 crosses it twice.
+
+### 13.6 Observing a running program
+
+One item on the infrastructure list has no home in either document. Packaging,
+namespaces, and documentation tooling are M11. The notebook protocol is M12.
+Serialization is D23. Interrupt, fuel, and progress are D22. A debugger and a
+profiler are none of those, and nothing else claims them.
+
+D33 makes this a slice-1 question. It removes the tree-walking evaluator,
+including as a debugging path, and its reason holds: two implementations diverge,
+and every semantic question then asks which one is authoritative. The consequence
+is that the machine is the only thing that ever runs a program, so the machine is
+the only thing that can be asked what a program is doing.
+
+Two parts of that belong to the instruction set, not to a tool built later.
+
+- **Whether an instruction offset maps to a source span.** D37 carries spans
+  through the CST into `Syntax`, and nothing carries them past compilation. A side
+  table from offset to span costs a table and a compiler pass. Introduced after the
+  encoding is fixed, it postdates every artifact already stored without it, and a
+  runtime error in library code can name a function and not a line.
+- **Whether the dispatch loop has an observation point.** §10's slice-1 list
+  already checks fuel and abort in dispatch, and D22 already carries a progress
+  channel, so a hook rides a branch that exists. D22's own reversal note applies
+  unchanged: this cannot be threaded in afterwards, because it touches every
+  evaluation path.
+
+Neither asks for a tool now. Both ask the instruction set to leave room, and the
+instruction set is the next thing D33 schedules.

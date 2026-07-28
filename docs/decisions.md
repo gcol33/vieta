@@ -1095,8 +1095,16 @@ nothing anyone wants. Choosing the interpreter first and adding the machine late
 means rewriting the evaluator and re-tuning everything written against the
 interpreter, and the second cost is invisible while it accrues.
 
+**What removing the interpreter transfers to the machine.** With no second
+evaluator, the machine is the only thing that can report what a program is doing,
+so a debugger and a profiler have no other host. Two parts of that are instruction
+set questions rather than tooling questions, and both are cheap now: whether an
+instruction offset maps to a source span, since D37's spans stop at `Syntax` and a
+side table is a compiler pass; and whether the dispatch loop exposes an observation
+point, since it already checks D22's fuel and cancellation token there. §13.6.
+
 **Status: Decided (no interpreter, bytecode in slice 1), Open (instruction set and
-calling convention, before the compiler).**
+calling convention, before the compiler; spans and observation hook with it).**
 
 ---
 
@@ -1500,6 +1508,7 @@ Open (whether Syntax owns nodes or is a view, and the concrete surface grammar).
 | Whether assumption contexts accept quantified propositions | With the enumeration | D6, §2.5, §13.1 |
 | Tag-bit layout in the id space | Slice 1 | D7, measured in the store itself, §1.9 |
 | Bytecode instruction set and calling convention | Before the compiler | D33 |
+| Whether the machine carries source spans and an observation hook | With the instruction set | D33, D22, D37, §13.6 |
 | Resource limit at construction, or none | Before the store holds anything | D10, D22, `layer-a.md` §14 |
 | Machine value representation, all of it | After the machine can be profiled | D34 |
 | Match-tree representation and matcher handoff | With the compiler | D35 |
