@@ -36,7 +36,7 @@ binding forms, and where each node came from.
 - [`docs/architecture.md`](docs/architecture.md) — architectural assessment: what
   the artifact is and where the mathematics sits, the host-language argument, the
   self-hosting thesis and how it stays falsifiable, the FLINT-`gr` abstraction
-  boundary, and the milestone sequence.
+  boundary, the milestone sequence, and a map of the surface that remains.
 - [`docs/decisions.md`](docs/decisions.md) — irreversible-decision register,
   D1 through D37: each entry records the decision, the alternatives considered,
   why reversal is expensive, and current status. Read D25 first.
