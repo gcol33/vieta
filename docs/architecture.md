@@ -83,7 +83,9 @@ What the constitution rules out, listed so it is not relitigated: global lazines
 (§2.7), one universal storage representation for every runtime value (§2.8), a
 single evaluate-until-fixpoint mechanism (§2.9), rules that carry their own
 traversal policy (§2.10), macros as symbol substitution (§2.11), untracked effects
-(§2.12), and unconstrained global method extension (§2.13).
+(§2.12), unconstrained global method extension (§2.13), and mandatory annotation
+of ordinary input, since `x + y` has to mean something without a declaration
+(§4.1).
 
 Registered as D25 through D32. Exact syntax and internal encodings stay open until
 the semantic contracts in §2 are written down.
@@ -1044,6 +1046,71 @@ than a human-facing log. Take Lean's `simp` with explicit simp-sets as a much
 better specification of rewriting than `Simplify`. Take metavariables and
 unification for solving. Take the definitional-versus-propositional equality
 discipline, which generalises to §2.1's four-way taxonomy.
+
+### 4.1 Why the older systems are shaped this way
+
+The take-and-reject lists are technical judgements, and read alone they invite a
+wrong conclusion: that a generation of designers missed the mathematics. They did
+not. Those systems grew from algorithms outward, and the order was forced.
+
+| | |
+|---|---|
+| The direction Macsyma ran | integration, then differentiation, then simplification, then expression storage, then assumptions, then matching, and by then it is a language |
+| The direction Vieta runs | what is a symbolic object, then what counts as the same object, then how it is interpreted, then what conditional validity is, then implement mathematics |
+
+The second order is cleaner and is only visible from downstream. The Macsyma
+general-simplifier paper describes a mechanism built for the problem its
+algorithms created, unwieldy output needing a central place to be put into useful
+form, and it already names the tension between a simpler-looking form and a
+canonical one. Wolfram made attributes mutable properties of a symbol, merging
+operator theory, evaluation policy, matching behaviour, and session state, and
+bought enormous interactive flexibility for it. Axiom and FriCAS separated
+categories from domains, which is the ancestor of §5's tower. Maude formalised
+computation as equational and rewriting logic with reflection, which is the
+ancestor of Layers A and C. Each tradition found one piece. Vieta is synthesising
+after their strengths and their failure modes are both visible, which is an
+easier problem than any of them had.
+
+Compatibility then froze the choices. Mutable `Orderless` cannot be withdrawn
+from Wolfram Language now whatever its merits, because evaluation, matching,
+packages, and documented user expectations all rest on it. A greenfield system
+gets to make a decision an established one cannot retrofit. That is the whole of
+the advantage, and it is not insight.
+
+**Three requirements this places on Vieta.**
+
+*Ceremony is a budget, and the separations spend it.* A user types `x + y`
+without saying whether the letters are reals, indeterminates, or matrices, and
+that ambiguity is why interactive mathematics is usable. Vieta's five levels are
+for the implementation and for the people who need them, and they must not
+surface as required annotations. `x + y` resolves to the kernel's operators with
+no declaration, domains are opted into rather than demanded, and
+`interpret x + y in PolynomialRing(Q, [x, y])` stays available and never
+obligatory. A design that is clearer on the page and heavier at the prompt has
+lost the thing that made the ancestors worth using.
+
+*The bridges are first-class, or the layering is a tax.* Separating CST, Syntax,
+Term, domain element, and Value pays only if crossing between them is cheap and
+total: elaboration from Syntax to Term, quotation from Syntax to data, lowering
+and lifting between Term and domain element (§5), and reification between Value
+and Term. The last of those is the one still without a written contract (D26),
+which makes it the bridge most likely to be discovered as a wall.
+
+*The foundation-first period is the real risk.* A system that specifies five
+representations, four equalities, guarded results, and a quotient theory before
+delivering `integrate(sin(x), x)` can spend its entire budget on seams. The
+mitigation is structural and already in §9 and §12: the first slice is vertical
+and ends at a demo that computes, and each specification is written immediately
+before the code that needs it rather than as a phase of its own.
+
+**What the contribution is.** Not that every mathematical fact belongs in the
+quotient. `x * x^(-1) = 1` holds away from zero, `sqrt(x^2) = x` holds under a
+sign condition, `log(x*y) = log x + log y` depends on the domain and the branch,
+and none of them is a structural law. The contribution is knowing exactly where
+the quotient ends, and having somewhere principled for everything past that
+boundary to go: obligations carried rather than assumed (D3), domains that say
+which model is in force (D15), and four equalities that keep the question
+distinct from the answer (D2).
 
 ---
 
