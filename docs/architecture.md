@@ -1240,17 +1240,20 @@ compatible with e-class ids (that is, not assuming an `ExprId` is a canonical
 representative that never changes) keeps equality saturation available as an
 engine you add rather than a rewrite you dread.
 
-**Binders.** The commitment is explicit binding forms with an alpha-invariant
-internal representation, and named surface syntax with names preserved as
-reconstruction hints. The **encoding stays open** (D6) for a concrete reason
-neither obvious choice settles: de Bruijn *indices* make a subterm's
-representation depth-dependent, so identical subterms at different depths do not
-share, partially defeating hash-consing, while *levels* share better under a fixed
-context and complicate open-term manipulation. Settle it after enumerating what
-actually binds, and expect the enumeration to show that more things bind than you
-assumed. Lexical arguments, integration variables, summation indices, pattern
-variables, and sequence-pattern variables are all binders; global symbols, domain
-generators, and generated indeterminates are not.
+**Binders.** The commitment is explicit binding forms, alpha-invariant after
+elaboration, with named surface syntax and names preserved as reconstruction hints.
+Binding lives in two representations under one scope contract (D6): an executable
+binder compiles into local references, code, and a closure, and a symbolic binder is
+a term in the store, with quotation as the crossing. The **encodings stay open**,
+one on each side, and the store's side turns on a concrete reason neither obvious
+choice settles: de Bruijn *indices* make a subterm's representation depth-dependent,
+so identical subterms at different depths do not share, partially defeating
+hash-consing, while *levels* share better under a fixed context and complicate
+open-term manipulation. Settle it after enumerating what actually binds, and expect
+the enumeration to show that more things bind than you assumed. Lexical arguments,
+integration variables, summation indices, pattern variables, and sequence-pattern
+variables are all binders; global symbols, domain generators, and generated
+indeterminates are not.
 
 **Matching.** Two separable things, and only one of them is irreversible.
 
@@ -1370,7 +1373,7 @@ Full register with alternatives and reversal costs in `decisions.md`.
 | 3 | Rewrites return `NoMatch`, a guarded result set, or a typed operational failure |
 | 4 | Truth values and operation status are different types |
 | 5 | `Conditional` and `Piecewise` are core constructors with algebra |
-| 6 | Explicit binding forms with alpha-invariant representation; encoding open |
+| 6 | Binding has shared semantics and separate representations; encodings open |
 | 7 | Hash-consing, id space, tag bits |
 | 8 | `ExprId` stability across GC, and the external-handle rule |
 | 9 | Semantic equivalence is a context-scoped layer, never store identity |
@@ -1715,8 +1718,8 @@ CAS integrates it.
 - the Layer A normalization specification, written as `docs/layer-a.md`: the
   signature vocabulary, the canonical order, the pass sequence, the termination
   argument, and the canonicity theorem with the point where completeness stops;
-- the enumeration of what binds, which the store's traversal API has to cover
-  (D6);
+- the enumeration of what binds, which the traversal and substitution API both
+  binder layers go under has to cover (D6);
 - the four-way equality taxonomy with the language-level predicates;
 - the `RewriteResult` and `Obligation` types;
 - the `Truth`/`Status` split;
@@ -1800,7 +1803,7 @@ and most of their content is already registered.
 
 | Area | Where it stands |
 |---|---|
-| Binding | D6 decided in semantics, enumeration and encoding open, §13.1 |
+| Binding | D6 decided in semantics and in the two-layer split, enumeration and encodings open, §13.1 |
 | Reification, `Value` to `Term` and back | D26, contract open, due before slice 1 ships |
 | Equality above Layer A | D2 decided, four relations with distinct predicates, none implemented |
 | Domain interpretation and lowering | D15, D16, §5 decided in shape, generic relation interface deferred |
@@ -1847,13 +1850,14 @@ by the solution set, and the two differ observably: under the second, two soluti
 sets differing only in the constant's name are alpha-equivalent and share one
 `ExprId`, and under the first they are two terms forever.
 
-**One further split, which is not a missing case but a missing distinction.**
-`fn(x) => e` in Vieta source binds a lexical variable and becomes a closure (D34).
-A symbolic `Function(x, x + y)` appearing under an integral is a term whose binder
-lives in the store. Both bind, in two representations, and substitution means
-different things in each: capture-avoiding replacement in the term, environment
-lookup in the closure. D6's encoding decision covers the second only, and the
-enumeration should say so explicitly, because the first is what a user writes.
+**One further split, a missing distinction rather than a missing case, now
+decided.** `fn(x) => e` in Vieta source binds a lexical variable and becomes a
+closure (D34). A symbolic `Function(x, x + y)` appearing under an integral is a term
+whose binder lives in the store. Both bind, in two representations, and substitution
+means different things in each: capture-avoiding replacement in the term,
+environment lookup in the closure. D6 now carries both layers under one scope and
+substitution contract, with quotation as the crossing, and leaves an encoding open
+on each side. The three cases above are what the enumeration still owes it.
 
 ### 13.2 A request for a specific form is not a request for a cheaper one
 

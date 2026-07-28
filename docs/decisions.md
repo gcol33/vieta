@@ -186,15 +186,21 @@ nowhere to land when a strategy chooses to materialise them.
 
 ---
 
-## D6. Explicit binding forms with alpha-invariant representation
+## D6. Binding has shared semantics and separate representations
 
-**Decision.** Vieta has explicit binding forms. The internal representation is
-alpha-invariant. Surface syntax is named, and names are preserved as
-reconstruction hints for printing and debugging.
+**Decision.** Vieta has explicit binding forms, and binding appears in two
+representations that share one theory of scope. An executable binder resolves
+during elaboration and compiles into local references, code, and a runtime closure.
+A symbolic binder is an immutable alpha-invariant term in the store. A closure is a
+`Value`; a symbolic binder is a `Term` (D26, D34). Surface syntax is named, and
+names are preserved as reconstruction hints for printing and debugging.
+
+> A closure executes binding. A symbolic binder represents binding.
 
 **Deliberately open: the encoding.** De Bruijn indices, de Bruijn levels, locally
 nameless, or another scoped representation, chosen after binder semantics are
-enumerated, behind a traversal API that keeps it swappable.
+enumerated, behind a traversal API that keeps it swappable. There are two encodings
+to choose, one on each side, and they are not required to agree.
 
 The tradeoff is real and neither choice is obviously right. Indices make a
 subterm's representation depth-dependent, so identical subterms at different
@@ -221,28 +227,83 @@ traversal API goes under (§13.1):
   twice with different constant names is alpha-equivalent and shares one `ExprId`;
   under the first the two terms never merge.
 
-**One distinction, separate from the cases.** `fn(x) => e` binds a lexical variable
+**Three levels, each doing separate work.** `fn(x) => e` binds a lexical variable
 and becomes a closure (D34); a symbolic `Function(x, x + y)` under an integral is a
-term whose binder is in the store. Substitution is capture-avoiding replacement in
-the second and environment lookup in the first. The encoding chosen here governs
-the store only, and the enumeration should say so, because the closure is what a
-user writes.
+term whose binder is in the store. Substitution is environment lookup in the first
+and capture-avoiding replacement in the second. Both exist, because they represent
+different things.
+
+```
+fn(x) => x + y            source    Lambda("x", Add(Name "x", Name "y"))
+                          resolved  Lambda(Binder 17, Add(Local 17, Global "y"))
+term { fn(x) => x + y }   stored    Lambda(Add(Bound 0, FreeSymbol "y"))
+```
+
+The source level keeps names and origin (D37). The resolved level is what
+elaboration produces, and it is what determines scope, shadowing, free variables,
+closure capture, and compilation. The stored level is alpha-invariant term data, so
+`term { fn(x) => x + y }` and `term { fn(z) => z + y }` are one `ExprId`. That
+sharing is a property the store owns; closure identity is a separate question, and
+two closures are not equal for looking alike.
+
+**The context decides which path a written form takes.**
+
+```
+let f = fn(x) => x + y            a closure, callable
+let t = term { fn(x) => x + y }   a term, inspectable and substitutable into
+```
+
+The first carries captured runtime values, a world (D20), and identity. The second
+can be substituted into, differentiated around, rewritten, or evaluated later under
+an environment. Quotation is the crossing between the two layers and is the only
+one.
+
+**What this settles.**
+
+- A bound occurrence and a free symbol are distinguishable after elaboration. A
+  lexical `x` and a symbolic `x` are two things.
+- Binding is alpha-invariant once elaboration has run, on both sides.
+- The store carries explicit symbolic binding forms.
+- An executable lambda compiles into code and a closure. It does not become an
+  interned binder term.
+- Quotation deliberately lowers a binding form into the symbolic store.
+- Both layers obey one capture-avoidance and scope contract, behind a shared
+  traversal and substitution API.
+- The concrete encoding stays deferred on both sides.
+
+**A closure does not reify by reading its source back.** Given `let y = 3` and
+`let f = fn(x) => x + y`, `describe(f)` can report the function together with the
+capture `{y: 3}`. `reify(f)` returning `term { fn(x) => x + 3 }` is a stronger claim
+and is not available in general, since a capture may hold a native domain value, a
+mutable resource, an iterator, another closure, or a world-dependent reference.
+D26's split between the two operations is what makes the difference statable.
 
 **Where the encoding gets decided.** D38 gives it a setting. The first elaboration
 slice carries literals, names, calls, `let`, `lambda`, and quotation, which is the
-smallest arrangement in which a lexical binder has to be represented for real. The
-enumeration above stays the gate on the store's traversal API, and the encoding
-gets chosen against code that runs rather than against the list.
+smallest arrangement in which a lexical binder has to be represented for real. Its
+binding shape follows from the above: a named binder becomes a `BinderId`, each
+occurrence resolves to a local reference or a global symbol, free-variable analysis
+over the resolved form gives the capture set, and quotation elaborates into a
+symbolic binding context that builds a store term. Local slots and closure layout
+are compilation and wait for D38's evidence. The enumeration above stays the gate on
+the store's traversal API, and each encoding gets chosen against code that runs
+rather than against the list.
 
 **Alternatives rejected.** Named bound variables with capture-avoiding renaming at
-substitution time. Committing to a specific encoding before the enumeration.
+substitution time. Committing to a specific encoding before the enumeration. One
+representation serving both layers, which either interns a closure's captured
+environment in the store (D19, D34) or gives up alpha-invariance for symbolic
+binders. Reifying a closure by recovering its source lambda, which is defined only
+when every capture has a symbolic reading.
 
-**Reversal cost.** The *semantic* commitment is irreversible: every traversal that
-goes under a binder, plus free alpha-equivalence under hash-consing. The
-*encoding* is behind an API and is not.
+**Reversal cost.** The *semantic* commitments are irreversible: every traversal that
+goes under a binder, free alpha-equivalence under hash-consing, and the split
+between the two layers, which decides what the machine holds and what the store
+holds. The *encodings* are behind an API and are not.
 
-**Status: Decided (semantics), Open (encoding, with the first elaboration slice,
-D38).**
+**Status: Decided (semantics, and that executable and symbolic binders are separate
+representations under one scope contract), Open (both encodings and the shared
+traversal and substitution API, with the first elaboration slice, D38).**
 
 ---
 
@@ -853,6 +914,14 @@ operations: `describe`, total structural inspection defined on every value kind,
 and `reify`, the mathematically meaningful conversion a value may refuse. Neither
 is one of D27's five, since both inspect the machine rather than answering a
 mathematical question.
+
+The closure is the case that shows the split is doing work (D6). A closure carrying
+captured values is not its source lambda: `describe` can report the function and the
+capture set, while `reify` returning that lambda with captures substituted in is
+defined only when every capture has a symbolic reading. Captures holding native
+domain values, mutable resources, iterators, or world-dependent references have
+none, and the contract has to say so rather than produce a term that reads back
+wrong.
 
 **Second consequence, which is why the trichotomy is load-bearing.** Racket-style
 hygiene needs syntax objects carrying lexical scope information that accumulates
@@ -1588,7 +1657,11 @@ opcode list, and none is answerable from the grammar.
 **The first elaboration slice.** Literals, names and symbol resolution, calls,
 `let`, `lambda`, quotation and term construction, and origin propagation. Nothing
 else. It is sized to expose the machine model rather than to cover the language,
-and it forces D6's encoding in a concrete setting instead of an abstract one.
+and it forces D6's encoding in a concrete setting instead of an abstract one. D6
+gives the slice its binding shape: named binders become `BinderId`s, occurrences
+resolve to a local reference or a global symbol, free-variable analysis over the
+result gives the capture set the compiler needs, and quotation elaborates into a
+symbolic binding context that builds a store term.
 
 **No Core IR is registered.** The resolved form lives behind `vieta-syntax` or in a
 `vieta-elab` crate, and whether it becomes an official Core IR stays open until it
@@ -1636,7 +1709,8 @@ resolved form's shape, and whether it becomes the Core IR).**
 
 | Item | Needed before | Reference |
 |---|---|---|
-| Binder encoding (indices, levels, locally nameless) | With the first elaboration slice | D6, D38 |
+| Binder encoding (indices, levels, locally nameless), separately on each side | With the first elaboration slice | D6, D38 |
+| Shared traversal and substitution API both binder layers go under | With the first elaboration slice | D6 |
 | Enumeration of what binds | Before choosing the encoding | D6 |
 | Whether assumption contexts accept quantified propositions | With the enumeration | D6, §2.5, §13.1 |
 | Tag-bit layout in the id space | Slice 1 | D7, measured in the store itself, §1.9 |
